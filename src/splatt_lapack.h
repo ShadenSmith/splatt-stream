@@ -28,6 +28,23 @@
  * PROTOTYPES
  *****************************************************************************/
 
+/* Matrix multiplication */
+void SPLATT_BLAS(gemm)(
+    char *,
+    char *,
+    splatt_blas_int *,
+    splatt_blas_int *,
+    splatt_blas_int *,
+    splatt_val_t *,
+    splatt_val_t *,
+    splatt_blas_int *,
+    splatt_val_t *,
+    splatt_blas_int *,
+    splatt_val_t *,
+    splatt_val_t *,
+    splatt_blas_int *);
+
+
 /* Cholesky factorization */
 void SPLATT_BLAS(potrf)(
     char *,

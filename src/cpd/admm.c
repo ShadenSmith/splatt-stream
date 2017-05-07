@@ -313,7 +313,7 @@ static idx_t p_admm_iterate_chunk(
  * PUBLIC FUNCTIONS
  *****************************************************************************/
 
-val_t admm_inner(
+val_t admm(
     idx_t mode,
     matrix_t * * mats,
     val_t * const restrict column_weights,
@@ -339,7 +339,7 @@ val_t admm_inner(
 
     /* Absorb columns into column_weights if no constraints are applied */
     if(ws->unconstrained) {
-      mat_normalize(mats[mode], column_weights, MAT_NORM_2, NULL, ws->thds);
+      mat_normalize(mats[mode], column_weights);
     }
     return 0.;
   }

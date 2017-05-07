@@ -165,26 +165,38 @@ double cpd_iterate(
 {
   idx_t const nmodes = tensor->nmodes;
 
-  /* TODO: fix MTTKRP interface */
+  /* XXX: fix MTTKRP interface */
+  /*
+   * The matrices used for MTTKRP. When using MPI, these may be larger than
+   * the mats[:] matrices due to non-local indices. If the sizes are the same,
+   * these are just aliases for mats[:].
+   */
   matrix_t * mats[MAX_NMODES+1];
+  matrix_t * mttkrp_mats[MAX_NMODES+1];
   for(idx_t m=0; m < tensor->nmodes; ++m) {
     mats[m] = mat_mkptr(factored->factors[m], tensor->dims[m], rank, 1);
+#ifdef SPLATT_USE_MPI
+#else
+    mttkrp_mats[m] = mats[m];
+#endif
 
-    mat_normalize(mats[m], factored->lambda, MAT_NORM_2, NULL, ws->thds);
+    mat_normalize(mats[m], factored->lambda);
   }
   mats[MAX_NMODES] = ws->mttkrp_buf;
+  mttkrp_mats[MAX_NMODES] = ws->mttkrp_buf;
 
   /* allow constraints to initialize */
   cpd_init_constraints(cpd_opts, mats, nmodes);
 
   /* reset column weights */
+  val_t * const restrict norms = factored->lambda;
   for(idx_t r=0; r < rank; ++r) {
-    factored->lambda[r] = 1.;
+    norms[r] = 1.;
   }
 
   /* initialite aTa values */
   for(idx_t m=1; m < nmodes; ++m) {
-    mat_aTa(mats[m], ws->aTa[m], NULL);
+    mat_aTa(mats[m], ws->aTa[m]);
   }
 
   printf("SPLATT_ADMM_ROW_CONVERGE: %d\n\n", SPLATT_ADMM_ROW_CONVERGE);
@@ -213,21 +225,20 @@ double cpd_iterate(
     /* foreach AO step */
     for(idx_t m=0; m < nmodes; ++m) {
       timer_fstart(&modetime[m]);
-      mttkrp_csf(tensor, mats, m, ws->thds, mttkrp_ws, global_opts);
+      mttkrp_csf(tensor, mttkrp_mats, m, ws->thds, mttkrp_ws, global_opts);
 
       /* ADMM solve for constraints */
-      inner_its[m] = admm_inner(m, mats, factored->lambda, ws, cpd_opts,
-          global_opts);
+      inner_its[m] = admm(m, mats, norms, ws, cpd_opts, global_opts);
 
       /* prepare aTa for next mode */
-      mat_aTa(mats[m], ws->aTa[m], NULL);
+      mat_aTa(mats[m], ws->aTa[m]);
 
       timer_stop(&modetime[m]);
     } /* foreach mode */
 
     /* calculate outer convergence */
-    double const norm = cpd_norm(ws, factored->lambda);
-    double const inner = cpd_innerprod(nmodes-1, ws, mats, factored->lambda);
+    double const norm = cpd_norm(ws, norms);
+    double const inner = cpd_innerprod(nmodes-1, ws, mats, norms);
     double const residual = sqrt(ttnormsq + norm - (2 * inner));
     err = (residual / sqrt(ttnormsq));
 
@@ -260,13 +271,18 @@ double cpd_iterate(
 
   /* absorb into lambda if no constraints/regularizations */
   if(ws->unconstrained) {
-    cpd_post_process(mats, factored->lambda, ws, cpd_opts, global_opts);
+    cpd_post_process(mats, norms, ws, cpd_opts, global_opts);
   } else {
     cpd_finalize_constraints(cpd_opts, mats, nmodes);
   }
 
   splatt_free(opts);
   for(idx_t m=0; m < tensor->nmodes; ++m) {
+    /* free matrix memory if not an alias */
+    if(mttkrp_mats[m] != mats[m]) {
+      mat_free(mttkrp_mats[m]);
+    }
+
     /* only free ptr */
     splatt_free(mats[m]);
   }
@@ -292,7 +308,7 @@ void cpd_post_process(
 
   /* normalize each matrix and adjust lambda */
   for(idx_t m=0; m < ws->nmodes; ++m) {
-    mat_normalize(mats[m], tmp, MAT_NORM_2, NULL, ws->thds);
+    mat_normalize(mats[m], tmp);
     for(idx_t f=0; f < rank; ++f) {
       column_weights[f] *= tmp[f];
     }

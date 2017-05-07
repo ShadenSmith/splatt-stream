@@ -35,9 +35,8 @@ typedef struct
 */
 typedef enum
 {
-  REDUCE_SUM,
-  REDUCE_MAX,
-  REDUCE_ERR
+  SPLATT_REDUCE_SUM,
+  SPLATT_REDUCE_MAX
 } splatt_reduce_type;
 
 
@@ -108,20 +107,19 @@ static inline int splatt_omp_get_num_threads()
  * PUBLIC FUNCTIONS
  *****************************************************************************/
 
-#define thd_reduce splatt_thd_reduce
+
+#define thread_allreduce splatt_thread_allreduce
 /**
-* @brief Perform a parallel reduction on thds->scratch[scratchid].
+* @brief Do a parallel all-to-all reduction with each threads' buffer.
 *
-* @param thds The thread structure we are using in the reduction.
-* @param scratchid Which scratch array to reduce.
-* @param nelems How many elements in the scratch array.
-* @param which Which reduction operation to perform.
+* @param buffer A thread's private buffer.
+* @param nelems The length of the buffer.
+* @param which Which type of reduction.
 */
-void thd_reduce(
-  thd_info * const thds,
-  idx_t const scratchid,
-  idx_t const nelems,
-  splatt_reduce_type const which);
+void thread_allreduce(
+    val_t * const buffer,
+    idx_t const nelems,
+    splatt_reduce_type const which);
 
 
 #define thd_times splatt_thd_times

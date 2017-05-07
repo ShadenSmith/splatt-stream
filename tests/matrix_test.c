@@ -43,7 +43,6 @@ CTEST2(matrix, matmul)
 
     /* perform matrix multiplication */
     matrix_t * C = mat_alloc(B->J, A->I);
-    memset(C->vals, 0, C->I * C->J * sizeof(val_t));
     mat_matmul(A, B, C);
 
     idx_t const I = A->I;
@@ -55,7 +54,7 @@ CTEST2(matrix, matmul)
 
 
     matrix_t * gold = mat_alloc(A->I, B->J);
-    memset(gold->vals, 0, gold->I * gold->J * sizeof(val_t));
+    memset(gold->vals, 0, gold->I * gold->J * sizeof(*gold->vals));
 
     val_t const * const av = A->vals;
     val_t const * const bv = B->vals;

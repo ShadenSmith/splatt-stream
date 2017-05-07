@@ -13,26 +13,24 @@
 /**
 * @brief Perform a parallel SUM reduction.
 *
-* @param thds The thread structure we are using in the reduction.
-* @param scratchid Which scratch array to reduce.
+* @param thds The data we are reducing (one array for each thread).
+* @param buffer thread-local buffer.
 * @param nelems How many elements in the scratch array.
 */
-static inline void p_reduce_sum(
-  thd_info * const thds,
-  idx_t const scratchid,
-  idx_t const nelems)
+static void p_reduce_sum(
+    val_t * * reduce_ptrs,
+    val_t * buffer,
+    idx_t const nelems)
 {
   int const tid = splatt_omp_get_thread_num();
   int const nthreads = splatt_omp_get_num_threads();
 
-  val_t * const myvals = (val_t *) thds[tid].scratch[scratchid];
-
   int half = nthreads / 2;
   while(half > 0) {
     if(tid < half && tid + half < nthreads) {
-      val_t const * const target = (val_t *) thds[tid+half].scratch[scratchid];
+      val_t const * const target = reduce_ptrs[tid+half];
       for(idx_t i=0; i < nelems; ++i) {
-        myvals[i] += target[i];
+        buffer[i] += target[i];
       }
     }
 
@@ -41,9 +39,9 @@ static inline void p_reduce_sum(
     /* check for odd number */
     #pragma omp master
     if(half > 1 && half % 2 == 1) {
-        val_t const * const last = (val_t *) thds[half-1].scratch[scratchid];
+        val_t const * const last = reduce_ptrs[half-1];
         for(idx_t i=0; i < nelems; ++i) {
-          myvals[i] += last[i];
+          buffer[i] += last[i];
         }
     }
 
@@ -55,39 +53,36 @@ static inline void p_reduce_sum(
   #pragma omp master
   {
     if(nthreads % 2 == 1) {
-      val_t const * const last = (val_t *) thds[nthreads-1].scratch[scratchid];
+      val_t const * const last = reduce_ptrs[nthreads-1];
       for(idx_t i=0; i < nelems; ++i) {
-        myvals[i] += last[i];
+        buffer[i] += last[i];
       }
     }
   }
-  #pragma omp barrier
 }
 
 
 /**
 * @brief Perform a parallel MAX reduction.
 *
-* @param thds The thread structure we are using in the reduction.
-* @param scratchid Which scratch array to reduce.
+* @param thds The data we are reducing (one array for each thread).
+* @param buffer thread-local buffer.
 * @param nelems How many elements in the scratch array.
 */
-static inline void p_reduce_max(
-  thd_info * const thds,
-  idx_t const scratchid,
-  idx_t const nelems)
+static void p_reduce_max(
+    val_t * * reduce_ptrs,
+    val_t * buffer,
+    idx_t const nelems)
 {
   int const tid = splatt_omp_get_thread_num();
   int const nthreads = splatt_omp_get_num_threads();
 
-  val_t * const myvals = (val_t *) thds[tid].scratch[scratchid];
-
   int half = nthreads / 2;
   while(half > 0) {
     if(tid < half && tid + half < nthreads) {
-      val_t const * const target = (val_t *) thds[tid+half].scratch[scratchid];
+      val_t const * const target = reduce_ptrs[tid+half];
       for(idx_t i=0; i < nelems; ++i) {
-        myvals[i] = SS_MAX(myvals[i], target[i]);
+        buffer[i] = SS_MAX(buffer[i], target[i]);
       }
     }
 
@@ -96,9 +91,9 @@ static inline void p_reduce_max(
     /* check for odd number */
     #pragma omp master
     if(half > 1 && half % 2 == 1) {
-        val_t const * const last = (val_t *) thds[half-1].scratch[scratchid];
+        val_t const * const last = reduce_ptrs[half-1];
         for(idx_t i=0; i < nelems; ++i) {
-          myvals[i] = SS_MAX(myvals[i], last[i]);
+          buffer[i] = SS_MAX(buffer[i], last[i]);
         }
     }
 
@@ -110,44 +105,67 @@ static inline void p_reduce_max(
   #pragma omp master
   {
     if(nthreads % 2 == 1) {
-      val_t const * const last = (val_t *) thds[nthreads-1].scratch[scratchid];
+      val_t const * const last = reduce_ptrs[nthreads-1];
       for(idx_t i=0; i < nelems; ++i) {
-        myvals[i] = SS_MAX(myvals[i], last[i]);
+        buffer[i] = SS_MAX(buffer[i], last[i]);
       }
     }
   }
-  #pragma omp barrier
 }
+
 
 
 /******************************************************************************
  * PUBLIC FUNCTIONS
  *****************************************************************************/
 
-void thd_reduce(
-  thd_info * const thds,
-  idx_t const scratchid,
-  idx_t const nelems,
-  splatt_reduce_type const which)
+
+void thread_allreduce(
+    val_t * const buffer,
+    idx_t const nelems,
+    splatt_reduce_type const which)
 {
-  if(splatt_omp_get_num_threads() == 1) {
+  int const tid = splatt_omp_get_thread_num();
+  int const nthreads = splatt_omp_get_num_threads();
+
+  /* used to get coherent all-to-all access to reduction data. */
+  static val_t ** reduce_ptrs;
+
+  if(nthreads == 1) {
     return;
   }
 
-  /* just to be safe in case any thread data is being copied */
+  /* get access to all thread pointers */
+  #pragma omp master
+  reduce_ptrs = splatt_malloc(nthreads * sizeof(*reduce_ptrs));
   #pragma omp barrier
 
+  reduce_ptrs[tid] = buffer;
+  #pragma omp barrier
+
+  /* do the reduction */
   switch(which) {
-  case REDUCE_SUM:
-    p_reduce_sum(thds, scratchid, nelems);
+  case SPLATT_REDUCE_SUM:
+    p_reduce_sum(reduce_ptrs, buffer, nelems);
     break;
-  case REDUCE_MAX:
-    p_reduce_max(thds, scratchid, nelems);
+  case SPLATT_REDUCE_MAX:
+    p_reduce_max(reduce_ptrs, buffer, nelems);
     break;
   default:
-    fprintf(stderr, "SPLATT: thd_reduce supports SUM and MAX only.\n");
-    abort();
+    fprintf(stderr, "SPLATT: thread_allreduce type '%d' not recognized.\n",
+        which);
   }
+
+  #pragma omp barrier
+
+  /* now each thread grabs master values */
+  for(idx_t i=0; i < nelems; ++i) {
+    buffer[i] = reduce_ptrs[0][i];
+  }
+  #pragma omp barrier
+
+  #pragma omp master
+  splatt_free(reduce_ptrs);
 }
 
 

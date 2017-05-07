@@ -7,7 +7,7 @@
 #include "../io.h"
 #include "../sptensor.h"
 #include "../stats.h"
-#include "../cpd.h"
+#include "../cpd/cpd.h"
 #include "../splatt_mpi.h"
 #include "../util.h"
 

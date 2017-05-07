@@ -25,12 +25,6 @@ typedef struct
   val_t * vals;
 } spmatrix_t;
 
-typedef enum
-{
-  MAT_NORM_2,
-  MAT_NORM_MAX
-} splatt_mat_norm;
-
 
 /******************************************************************************
  * INCLUDES
@@ -78,6 +72,39 @@ typedef enum
  * PUBLIC FUNCTIONS
  *****************************************************************************/
 
+
+
+#define mat_normalize splatt_mat_normalize
+/**
+* @brief Normalize the columns of A using l_2 norm and return the norms in
+*        lambda.
+*
+* @param A The matrix to normalize.
+* @param lambda The vector of column norms.
+*/
+void mat_normalize(
+  matrix_t * const A,
+  val_t * const restrict lambda);
+
+
+
+#ifdef SPLATT_USE_MPI
+#define mat_normalize_mpi splatt_mat_normalize_mpi
+/**
+* @brief Normalize the columns of A and return the norms in lambda.
+*
+* @param A The matrix to normalize.
+* @param which Which norm to use.
+* @param comm MPI communicator to use.
+*/
+void mat_normalize_mpi(
+  matrix_t * const A,
+  val_t * const restrict lambda,
+  MPI_Comm comm);
+#endif
+
+
+
 #define mat_fillptr splatt_mat_fillptr
 /**
 * @brief Fill a matrix pointer 'ptr' with a SHALLOW COPY of the existing data.
@@ -98,7 +125,7 @@ void mat_fillptr(
 
 #define mat_mkptr splatt_mat_mkptr
 /**
-* @brief Fill a dense matrix with a SHALLOW COPY of the existing data. The 
+* @brief Fill a dense matrix with a SHALLOW COPY of the existing data. The
 *        struct is allocated for you.
 *
 * @param data The data to copy into the matrix structure.
@@ -113,7 +140,6 @@ matrix_t * mat_mkptr(
     idx_t rows,
     idx_t cols,
     int rowmajor);
-
 
 
 #define mat_cholesky splatt_mat_cholesky
@@ -152,64 +178,34 @@ void mat_matmul(
   matrix_t  * const C);
 
 
-#define mat_syminv splatt_mat_syminv
-/**
-* @brief Compute the 'inverse' of symmetric matrix A.
-*
-* @param A Symmetric FxF matrix.
-* @param Abuf FxF buffer space.
-*/
-void mat_syminv(
-  matrix_t * const A);
-
-
-#define mat_aTa_hada splatt_mat_aTa_hada
-/**
-* @brief Compute (A^T A * B^T B * C^T C ...) where * is the Hadamard product.
-*
-* @param mats An array of matrices.
-* @param start The first matrix to include.
-* @param end The last matrix to include. This can be before start because we
-*            operate modulo nmats.
-* @param nmats The number of matrices.
-* @param ret The FxF output matrix.
-*/
-void mat_aTa_hada(
-  matrix_t ** mats,
-  idx_t const start,
-  idx_t const end,
-  idx_t const nmats,
-  matrix_t * const buf,
-  matrix_t * const ret);
-
-
 #define mat_aTa splatt_mat_aTa
 /**
 * @brief Compute A^T * A with a nice row-major pattern.
 *
 * @param A The input matrix.
-* @param ret The output matrix, A^T * A.
-* @param rinfo MPI communication info.
+* @param[out] ret The output matrix, A^T * A.
 */
 void mat_aTa(
   matrix_t const * const A,
-  matrix_t * const ret,
-  rank_info * const rinfo);
+  matrix_t * const ret);
 
-#define calc_gram_inv splatt_calc_gram_inv
+
+#ifdef SPLATT_USE_MPI
 /**
-* @brief Calculate (BtB * CtC * ...)^-1, where * is the Hadamard product. This
-*        is the Gram Matrix of the CPD.
+* @brief Perform `mat_ata()` when the matrix is row-distributed among MPI
+* ranks. The result will be stored in 'ret' on all ranks (via
+* `MPI_Allreduce()`).
 *
-* @param mode Which mode we are operating on (it is not used in the product).
-* @param nmodes The number of modes in the tensor.
-* @param aTa An array of matrices (length MAX_NMODES)containing BtB, CtC, etc.
-*            [OUT] The result is stored in ata[MAX_NMODES].
+* @param A The distributed matrix.
+* @param[out] ret The output matrix, A^T * A.
+* @param comm The MPI communicator.
 */
-void calc_gram_inv(
-  idx_t const mode,
-  idx_t const nmodes,
-  matrix_t ** aTa);
+void mat_aTa_mpi(
+  matrix_t const * const A,
+  matrix_t * const ret,
+  MPI_Comm comm);
+#endif
+
 
 
 void mat_form_gram(
@@ -217,31 +213,6 @@ void mat_form_gram(
     matrix_t * out_mat,
     idx_t nmodes,
     idx_t mode);
-
-void mat_solve_normals(
-  idx_t const mode,
-  idx_t const nmodes,
-	matrix_t * * ata,
-  matrix_t * rhs,
-  val_t const reg);
-
-#define mat_normalize splatt_mat_normalize
-/**
-* @brief Normalize the columns of A and return the norms in lambda.
-*        Supported norms are:
-*          1. 2-norm
-*          2. max-norm
-*
-* @param A The matrix to normalize.
-* @param lambda The vector of column norms.
-* @param which Which norm to use.
-*/
-void mat_normalize(
-  matrix_t * const A,
-  val_t * const restrict lambda,
-  splatt_mat_norm const which,
-  rank_info * const rinfo,
-  thd_info * const thds);
 
 
 #define mat_rand splatt_mat_rand

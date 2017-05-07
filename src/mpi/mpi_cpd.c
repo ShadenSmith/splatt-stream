@@ -4,6 +4,7 @@
  *****************************************************************************/
 #include "../splatt_mpi.h"
 #include "../mttkrp.h"
+#include "../matrix.h"
 #include "../timer.h"
 #include "../thd_info.h"
 #include "../tile.h"
@@ -676,7 +677,7 @@ double mpi_cpd_als_iterate(
   matrix_t * aTa[MAX_NMODES+1];
   for(idx_t m=0; m < nmodes; ++m) {
     aTa[m] = mat_alloc(nfactors, nfactors);
-    mat_aTa(globmats[m], aTa[m], rinfo, thds, nthreads);
+    mat_aTa_mpi(globmats[m], aTa[m], rinfo->comm_3d);
   }
   /* used as buffer space */
   aTa[MAX_NMODES] = mat_alloc(nfactors, nfactors);
@@ -732,18 +733,14 @@ double mpi_cpd_als_iterate(
           opts[SPLATT_OPTION_REGULARIZE]);
 
       /* normalize columns and extract lambda */
-      if(it == 0) {
-        mat_normalize(globmats[m], lambda, MAT_NORM_2, rinfo, thds);
-      } else {
-        mat_normalize(globmats[m], lambda, MAT_NORM_MAX, rinfo, thds);
-      }
+      mat_normalize_mpi(globmats[m], lambda, rinfo->comm_3d);
 
       /* send updated rows to neighbors */
       mpi_update_rows(rinfo->indmap[m], nbr2globs_buf, local2nbr_buf, mats[m],
           globmats[m], rinfo, nfactors, m, opts[SPLATT_OPTION_COMM]);
 
       /* update A^T*A */
-      mat_aTa(globmats[m], aTa[m], rinfo, thds);
+      mat_aTa_mpi(globmats[m], aTa[m], rinfo->comm_3d);
       timer_stop(&modetime[m]);
     } /* foreach mode */
 
@@ -777,7 +774,7 @@ double mpi_cpd_als_iterate(
   /* normalize each mat and adjust lambda */
   val_t * tmp = (val_t *) splatt_malloc(nfactors * sizeof(val_t));
   for(idx_t m=0; m < nmodes; ++m) {
-    mat_normalize(globmats[m], tmp, MAT_NORM_2, rinfo, thds, nthreads);
+    mat_normalize_mpi(globmats[m], tmp, rinfo->comm_3d);
     for(idx_t f=0; f < nfactors; ++f) {
       lambda[f] *= tmp[f];
     }

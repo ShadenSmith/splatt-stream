@@ -15,12 +15,12 @@ cd ${CMAKE_DIR}
 
 # Download binary
 curl -O ${CMAKE_URL}
-tar -f ${CMAKE_FILE} --strip-components=1 -xz -C ${CMAKE_DIR}
+tar -f ${CMAKE_FILE} --strip-components=1 -xz -C $(pwd)
 
 # Apple has a different app directory than Linux
-APP_DIR=${CMAKE_DIR}
+APP_DIR=$(pwd)
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  APP_DIR="${CMAKE_DIR}/CMake.app/Contents"
+  APP_DIR="$(pwd)/CMake.app/Contents"
 fi
 
 # Return CMake binary path in STDOUT.
