@@ -414,23 +414,31 @@ void mpi_cpd_stats(
 
 
 
+/*
+ * XXX this is bad.
+ */
 void mpi_global_stats(
   sptensor_t * const tt,
   rank_info * const rinfo,
   char const * const ifname)
 {
-  idx_t * tmpdims = tt->dims;
-  idx_t tmpnnz = tt->nnz;
-  tt->dims = rinfo->global_dims;
+  /* backup dims and nnz */
+  idx_t tmpdims[MAX_NMODES];
+  memcpy(tmpdims, tt->dims, tt->nmodes * sizeof(*tmpdims));
+  idx_t const tmpnnz = tt->nnz;
+
+  /* save global data in tt */
+  memcpy(tt->dims, rinfo->global_dims, tt->nmodes * sizeof(*tt->dims));
   tt->nnz = rinfo->global_nnz;
 
   /* print stats */
   stats_tt(tt, ifname, STATS_BASIC, 0, NULL);
 
   /* restore local stats */
-  tt->dims = tmpdims;
+  memcpy(tt->dims, tmpdims, tt->nmodes * sizeof(*tmpdims));
   tt->nnz = tmpnnz;
 }
+
 
 void mpi_rank_stats(
   sptensor_t const * const tt,

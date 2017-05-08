@@ -939,23 +939,18 @@ void tt_sort_range(
   timer_start(&timers[TIMER_SORT]);
   if(start == 0 && end == tt->nnz) {
     p_counting_sort_hybrid(tt, cmplt);
-
   /* sort a subtensor */
   } else {
-    switch(tt->type) {
-    case SPLATT_NMODE:
-      p_tt_quicksort(tt, cmplt, start, end);
-      break;
-
-    case SPLATT_3MODE:
+    if(tt->nmodes == 3) {
       p_tt_quicksort3(tt, cmplt, start, end);
-      break;
+    } else {
+      p_tt_quicksort(tt, cmplt, start, end);
     }
   }
 
 
   if(dim_perm == NULL) {
-    free(cmplt);
+    splatt_free(cmplt);
   }
   timer_stop(&timers[TIMER_SORT]);
 }

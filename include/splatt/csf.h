@@ -21,8 +21,6 @@
 * @brief This is a compressed sparse fiber (CSF) data structure for sparse
 *        tensors.
 */
-
-
 typedef struct _splatt_csf splatt_csf;
 
 
@@ -52,15 +50,19 @@ extern "C" {
 *                follows opts[SPLATT_OPTION_CSF_ALLOC].
 * @param options An options array allocated by splatt_default_opts().
 *
-* @return SPLATT error code (splatt_error_t). SPLATT_SUCCESS on success.
+* @return SPLATT error code. SPLATT_SUCCESS on success.
 */
-int splatt_csf_load(
+splatt_error_type splatt_csf_load(
     char const * const fname,
     splatt_idx_t * nmodes,
     splatt_csf ** tensors,
     double const * const options);
 
 
+/*
+ * XXX: rewrite to use splatt_coord format.
+ */
+#if 0
 /**
 * @brief Convert a tensor in coordinate format [(i,j,k]=v] to CSF.
 *
@@ -76,15 +78,16 @@ int splatt_csf_load(
 *                splatt_option_t enum to change these values.
 *                SPLATT_OPTION_TILE is used here.
 *
-* @return SPLATT error code (splatt_error_t). SPLATT_SUCCESS on success.
+* @return SPLATT error code. SPLATT_SUCCESS on success.
 */
-int splatt_csf_convert(
+splatt_error_type splatt_csf_convert(
     splatt_idx_t const nmodes,
     splatt_idx_t const nnz,
     splatt_idx_t ** const inds,
     splatt_val_t * const vals,
     splatt_csf ** tensors,
     double const * const options);
+#endif
 
 
 /**

@@ -10,34 +10,62 @@
  *****************************************************************************/
 
 /**
-* @brief Types of tensors supported by splatt.
-*/
-typedef enum
-{
-  SPLATT_3MODE,   /** Three-mode tensors. */
-  SPLATT_NMODE,   /** Tensors of with arbitrary numbers of modes.
-                      NOTE: support is minimal. */
-} tt_type;
-
-
-/**
 * @brief The main data structure for representing sparse tensors in
 *        coordinate format.
 */
-typedef struct
+struct _splatt_coord
 {
-  tt_type type;   /** Type of tensor represented */
-  idx_t nmodes;   /** The number of modes in the tensor, denoted 'm'. */
-  idx_t nnz;      /** The number of nonzeros in the tensor. */
-  idx_t * dims;   /** An array containing the dimension of each mode. */
-  idx_t ** ind;   /** An m x nnz matrix containing the coordinates of each
-                      nonzero. The nth nnz is accessed via ind[0][n], ind[1][n],
-                      ..., ind[m][n]. */
-  val_t * vals;   /** An array containing the values of each nonzero. */
-  int tiled;      /** Whether sptensor_t has been tiled. Used by ftensor_t. */
 
+  /**
+  * @brief The number of modes in the sparse tensor.
+  */
+  idx_t nmodes;
+
+  /**
+  * @brief The lengths of each mode.
+  */
+  idx_t dims[MAX_NMODES];
+
+  /**
+  * @brief The number of non-zeros in the tensor.
+  */
+  idx_t nnz;
+
+  /**
+  * @brief An 'nmodes' x 'nnz' matrix containing the coordinates of each
+  *        non-zero. The coordinates of the nth non-zero are accessed via
+  *        ind[0][n], ind[1][n], ..., ind[nmodes-1][n].
+  */
+  idx_t * ind[MAX_NMODES];
+
+  /**
+  * @brief The value associated with each non-zero.
+  */
+  val_t * vals;
+
+  /**
+  * @brief Indicates whether the non-zeros have been arranged for tiling.
+  *
+  *        XXX: deprecated.
+  */
+  int tiled;
+
+  /**
+  * @brief A map of local to global indices. If indmap[m] is non-NULL,
+  *        ind[m][i] actually represents indmap[m][ind[m][i]] in some global
+  *        coordinate system (usually due to MPI).
+  *
+  *        XXX: deprecated.
+  */
   idx_t * indmap[MAX_NMODES]; /** Maps local -> global indices. */
-} sptensor_t;
+};
+
+
+/*
+ * Just a convenient typedef for older code.
+ * XXX: move to to newer `splatt_coord` name.
+ */
+typedef struct _splatt_coord sptensor_t;
 
 
 
@@ -77,26 +105,6 @@ sptensor_t * tt_alloc(
   idx_t const nnz,
   idx_t const nmodes);
 
-
-
-#define tt_fill splatt_tt_fill
-/**
-* @brief Store inds/vals info into tt and determine dimension information.
-*        NOTE: This only stores the pointers directly, does not allocate
-*        memory!
-*
-* @param tt The tensor to fill.
-* @param nnz The length of inds/vals.
-* @param nmodes The number of modes in the tensor.
-* @param inds A 2D array of indices. The x'th nnz is found at ind[0][x], ...
-* @param vals An array of values.
-*/
-void tt_fill(
-  sptensor_t * const tt,
-  idx_t const nnz,
-  idx_t const nmodes,
-  idx_t ** const inds,
-  val_t * const vals);
 
 
 

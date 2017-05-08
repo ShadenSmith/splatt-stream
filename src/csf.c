@@ -8,13 +8,14 @@
 #include "ccp/ccp.h"
 
 #include "io.h"
+#include "sptensor.h"
 
 
 /******************************************************************************
  * API FUNCTIONS
  *****************************************************************************/
 
-int splatt_csf_load(
+splatt_error_type splatt_csf_load(
     char const * const fname,
     splatt_idx_t * nmodes,
     splatt_csf ** tensors,
@@ -34,24 +35,6 @@ int splatt_csf_load(
 
   return SPLATT_SUCCESS;
 }
-
-int splatt_csf_convert(
-    splatt_idx_t const nmodes,
-    splatt_idx_t const nnz,
-    splatt_idx_t ** const inds,
-    splatt_val_t * const vals,
-    splatt_csf ** tensors,
-    double const * const options)
-{
-  sptensor_t tt;
-  tt_fill(&tt, nnz, nmodes, inds, vals);
-  tt_remove_empty(&tt);
-
-  *tensors = csf_alloc(&tt, options);
-
-  return SPLATT_SUCCESS;
-}
-
 
 void splatt_free_csf(
     splatt_csf * tensors,

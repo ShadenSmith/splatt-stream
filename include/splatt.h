@@ -46,6 +46,7 @@
  *****************************************************************************/
 
 #include "splatt/global_options.h"
+#include "splatt/coord.h"
 #include "splatt/csf.h"
 #include "splatt/mpi.h"
 

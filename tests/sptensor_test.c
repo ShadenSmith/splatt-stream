@@ -29,22 +29,21 @@ CTEST_TEARDOWN(sptensor)
 }
 
 
-CTEST2(sptensor, tt_fill)
+CTEST2(sptensor, splatt_alloc_coord)
 {
-  for(idx_t i=0; i < data->ntensors; ++i) {
-    sptensor_t * gold = data->tensors[i];
+  splatt_coord * coord = splatt_alloc_coord();
 
-    /* make a copy */
-    sptensor_t test;
-    tt_fill(&test, gold->nnz, gold->nmodes, gold->ind, gold->vals);
+  ASSERT_NOT_NULL(coord);
 
-    ASSERT_EQUAL(gold->nnz, test.nnz);
-    ASSERT_EQUAL(gold->nmodes, test.nmodes);
-    for(idx_t m=0; m < gold->nmodes; ++m) {
-      ASSERT_EQUAL(gold->dims[m], test.dims[m]);
-    }
+  ASSERT_EQUAL(0, coord->nmodes);
+  ASSERT_EQUAL(0, coord->nnz);
 
-    splatt_free(test.dims);
+  ASSERT_NULL(coord->vals);
+  for(idx_t m=0; m < SPLATT_MAX_NMODES; ++m) {
+    ASSERT_NULL(coord->ind[m]);
   }
+
+  splatt_free_coord(coord);
 }
+
 

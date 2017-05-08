@@ -241,50 +241,18 @@ sptensor_t * tt_alloc(
   idx_t const nnz,
   idx_t const nmodes)
 {
-  sptensor_t * tt = (sptensor_t*) splatt_malloc(sizeof(*tt));
+  sptensor_t * tt = splatt_alloc_coord();
   tt->tiled = SPLATT_NOTILE;
 
   tt->nnz = nnz;
-  tt->vals = splatt_malloc(nnz * sizeof(*tt->vals));
-
   tt->nmodes = nmodes;
-  tt->type = (nmodes == 3) ? SPLATT_3MODE : SPLATT_NMODE;
 
-  tt->dims = splatt_malloc(nmodes * sizeof(*tt->dims));
-  tt->ind  = splatt_malloc(nmodes * sizeof(*tt->ind));
+  tt->vals = splatt_malloc(nnz * sizeof(*tt->vals));
   for(idx_t m=0; m < nmodes; ++m) {
     tt->ind[m] = splatt_malloc(nnz * sizeof(**tt->ind));
-    tt->indmap[m] = NULL;
   }
 
   return tt;
-}
-
-
-void tt_fill(
-  sptensor_t * const tt,
-  idx_t const nnz,
-  idx_t const nmodes,
-  idx_t ** const inds,
-  val_t * const vals)
-{
-  tt->tiled = SPLATT_NOTILE;
-  tt->nnz = nnz;
-  tt->vals = vals;
-  tt->ind = inds;
-
-  tt->nmodes = nmodes;
-  tt->type = (nmodes == 3) ? SPLATT_3MODE : SPLATT_NMODE;
-
-  tt->dims = splatt_malloc(nmodes * sizeof(*tt->dims));
-  for(idx_t m=0; m < nmodes; ++m) {
-    tt->indmap[m] = NULL;
-
-    tt->dims[m] = 1 + inds[m][0];
-    for(idx_t i=1; i < nnz; ++i) {
-      tt->dims[m] = SS_MAX(tt->dims[m], 1 + inds[m][i]);
-    }
-  }
 }
 
 
@@ -292,17 +260,14 @@ void tt_fill(
 void tt_free(
   sptensor_t * tt)
 {
-  tt->nnz = 0;
+  splatt_free(tt->vals);
   for(idx_t m=0; m < tt->nmodes; ++m) {
     splatt_free(tt->ind[m]);
     splatt_free(tt->indmap[m]);
   }
-  tt->nmodes = 0;
-  splatt_free(tt->dims);
-  splatt_free(tt->ind);
-  splatt_free(tt->vals);
   splatt_free(tt);
 }
+
 
 spmatrix_t * tt_unfold(
   sptensor_t * const tt,
@@ -353,4 +318,63 @@ spmatrix_t * tt_unfold(
 
   return mat;
 }
+
+
+
+
+/******************************************************************************
+ * API FUNCTONS
+ *****************************************************************************/
+
+
+
+splatt_coord * splatt_alloc_coord()
+{
+  splatt_coord * coord = splatt_malloc(sizeof(*coord));
+
+  /* initialize values */
+  coord->nmodes = 0;
+  for(idx_t m=0; m < MAX_NMODES; ++m) {
+    coord->dims[m] = 0;
+  }
+  coord->nnz = 0;
+
+  coord->vals = NULL;
+  for(idx_t m=0; m < MAX_NMODES; ++m) {
+    coord->ind[m]    = NULL;
+    coord->indmap[m] = NULL;
+  }
+
+  return coord;
+}
+
+
+void splatt_free_coord(
+    splatt_coord * coord)
+{
+  if(coord == NULL) {
+    return;
+  }
+
+  splatt_free(coord->vals);
+  for(idx_t m=0; m < MAX_NMODES; ++m) {
+    splatt_free(coord->ind[m]);
+    splatt_free(coord->indmap[m]);
+  }
+
+  splatt_free(coord);
+}
+
+
+splatt_error_type splatt_coord_load(
+    char const * const fname,
+    splatt_coord * const coord)
+{
+  /* XXX */
+  return SPLATT_ERROR_BADINPUT;
+}
+
+
+
+
 
