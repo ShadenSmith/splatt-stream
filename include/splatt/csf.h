@@ -1,5 +1,5 @@
 /**
-* @file api_csf.h
+* @file include/splatt/csf.h
 * @brief Functions for manipulating tensors stored in CSF form.
 * @author Shaden Smith <shaden@cs.umn.edu>
 * @version 2.0.0
@@ -8,8 +8,24 @@
 
 
 
-#ifndef SPLATT_SPLATT_CSF_H
-#define SPLATT_SPLATT_CSF_H
+#ifndef SPLATT_INCLUDE_CSF_H
+#define SPLATT_INCLUDE_CSF_H
+
+
+
+/******************************************************************************
+ * TYPES
+ *****************************************************************************/
+
+/**
+* @brief This is a compressed sparse fiber (CSF) data structure for sparse
+*        tensors.
+*/
+
+
+typedef struct _splatt_csf splatt_csf;
+
+
 
 
 /*

@@ -727,10 +727,13 @@ double mpi_cpd_als_iterate(
         m1 = mats[MAX_NMODES];
       }
 
+      /* XXX removed for merge */
+#if 0
       /* invert normal equations (Cholesky factorization) for new factor */
       par_memcpy(globmats[m]->vals, m1->vals, m1->I * nfactors * sizeof(val_t));
       mat_solve_normals(m, nmodes, aTa, globmats[m],
           opts[SPLATT_OPTION_REGULARIZE]);
+#endif
 
       /* normalize columns and extract lambda */
       mat_normalize_mpi(globmats[m], lambda, rinfo->comm_3d);

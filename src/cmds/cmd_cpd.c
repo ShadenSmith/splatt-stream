@@ -237,6 +237,7 @@ enum
   CMD_GROUP_PERFORMANCE,
   CMD_GROUP_CONSTRAINT,
   CMD_GROUP_ADMM,
+  CMD_GROUP_MPI,
 };
 
 
@@ -276,6 +277,25 @@ static struct argp_option cpd_options[] = {
       "convergence tolerance of inner ADMM iterations (default: 1e-2)", CMD_GROUP_ADMM},
   {"block", 'b', "#ROWS", 0, "number of rows per ADMM block "
       "(applicable for row-separable constraints; default: 50)", CMD_GROUP_ADMM},
+
+#ifdef SPLATT_USE_MPI
+  {0, 0, 0, 0,
+    "\nDistributed-Memory Factorization\n"
+    "--------------------------------\n"
+    "splatt will try to choose good defaults for distributed-memory execution. "
+    "However, users can fine-tune tensor distribution and other options:\n",
+		CMD_GROUP_MPI},
+
+  {"distribute", 'd', "DIM", 0, "dimension of data distribution. "
+                                 "Medium-grained decomposition is the default,"
+                                 " and SPLATT will determine a good dimension.\n"
+                                 "\t-d 1 to use coarse-grained\n"
+                                 "\t-d IxJxK to specify medium-grained (default)\n"
+                                 "\t-d f to use fine-grained (-p required)\n",
+                                 CMD_GROUP_MPI},
+  {"partition", 'p', "FILE", 0, "MPI: partitioning file for fine-grained",
+      CMD_GROUP_MPI},
+#endif
   { 0 }
 };
 

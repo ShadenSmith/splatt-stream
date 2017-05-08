@@ -174,32 +174,5 @@ typedef enum
 } splatt_csf_type;
 
 
-/**
-* @brief Tensor decomposition schemes.
-*/
-typedef enum
-{
-  /** @brief Coarse-grained decomposition is using a separate 1D decomposition
-   *         for each mode. */
-  SPLATT_DECOMP_COARSE,
-  /** @brief Medium-grained decomposition is an 'nmodes'-dimensional
-   *         decomposition. */
-  SPLATT_DECOMP_MEDIUM,
-  /** @brief Fine-grained decomposition distributes work at the nonzero level.
-   *         NOTE: requires a partitioning on the nonzeros. */
-  SPLATT_DECOMP_FINE
-} splatt_decomp_type;
-
-
-/**
-* @brief Communication pattern type. We support point-to-point, and all-to-all
-*        (vectorized).
-*/
-typedef enum
-{
-  SPLATT_COMM_POINT2POINT,
-  SPLATT_COMM_ALL2ALL
-} splatt_comm_type;
-
 
 #endif

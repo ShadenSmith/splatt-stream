@@ -11,8 +11,10 @@
 #include <math.h>
 
 
+#ifdef SPLATT_USE_MPI
+#include <mpi.h>
+#else
 /* define MPI_Comm to make life easier without MPI */
-#ifndef SPLATT_USE_MPI
 typedef int MPI_Comm;
 #endif
 

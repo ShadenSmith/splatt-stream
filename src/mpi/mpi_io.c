@@ -1079,14 +1079,20 @@ sptensor_t * mpi_simple_distribute(
   }
 
   /* set dims info */
-  #pragma omp parallel for schedule(static, 1)
-  for(idx_t m=0; m < tt->nmodes; ++m) {
-    idx_t const * const inds = tt->ind[m];
-    idx_t dim = 1 +inds[0];
-    for(idx_t n=1; n < tt->nnz; ++n) {
-      dim = SS_MAX(dim, 1 + inds[n]);
+  if(tt->nnz > 0) {
+    #pragma omp parallel for schedule(static, 1)
+    for(idx_t m=0; m < tt->nmodes; ++m) {
+      idx_t const * const inds = tt->ind[m];
+      idx_t dim = 1 + inds[0];
+      for(idx_t n=1; n < tt->nnz; ++n) {
+        dim = SS_MAX(dim, 1 + inds[n]);
+      }
+      tt->dims[m] = dim;
     }
-    tt->dims[m] = dim;
+  } else {
+    for(idx_t m=0; m < tt->nmodes; ++m) {
+      tt->dims[m] = 0;
+    }
   }
 
 
@@ -1199,7 +1205,7 @@ sptensor_t * mpi_rearrange_by_part(
     send_total += nsend[p];
     recv_total += nrecv[p];
   }
-  assert(send_total = ttbuf->nnz);
+  assert(send_total == ttbuf->nnz);
 
   /* how many nonzeros I'll own */
   idx_t const nowned = recv_total;

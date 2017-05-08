@@ -1,10 +1,11 @@
-
+#if 0
 #include "../ctest/ctest.h"
 #include "../splatt_test.h"
 
 #include "../../src/io.h"
 #include "../../src/sptensor.h"
 #include "../../src/sort.h"
+#include "../../src/splatt_mpi.h"
 
 static char const * const TMP_FILE = "tmp.bin";
 
@@ -30,6 +31,48 @@ CTEST_TEARDOWN(mpi_io)
     tt_free(data->tensors[i]);
   }
 }
+
+
+CTEST2(mpi_io, mpi_simple_distribute)
+{
+  for(idx_t i=0; i < data->ntensors; ++i) {
+    sptensor_t * mpi_tt = mpi_simple_distribute(datasets[i], MPI_COMM_WORLD);
+
+    ASSERT_NOT_NULL(mpi_tt);
+    ASSERT_NOT_NULL(mpi_tt->ind);
+    ASSERT_NOT_NULL(mpi_tt->vals);
+    ASSERT_EQUAL(data->tensors[i]->nmodes, mpi_tt->nmodes);
+
+    /* check for global dims */
+    for(idx_t m=0; m < mpi_tt->nmodes; ++m) {
+      ASSERT_EQUAL(data->tensors[i]->dims[m], mpi_tt->dims[m]);
+    }
+
+    /* all nnz accounted for */
+    idx_t total_nnz = 0;
+    MPI_Allreduce(&(mpi_tt->nnz), &total_nnz, 1, SPLATT_MPI_IDX, MPI_SUM,
+        MPI_COMM_WORLD);
+    ASSERT_EQUAL(data->tensors[i]->nnz, total_nnz);
+
+    /* check that all inds are accounted for, too */
+    for(idx_t m=0; m < mpi_tt->nmodes; ++m) {
+      idx_t * gold_hist = tt_get_hist(data->tensors[i], m);
+
+      idx_t * test_hist = tt_get_hist(mpi_tt, m);
+      MPI_Allreduce(MPI_IN_PLACE, test_hist, (int) mpi_tt->dims[m],
+          SPLATT_MPI_IDX, MPI_SUM, MPI_COMM_WORLD);
+      for(idx_t x=0; x < mpi_tt->dims[m]; ++x) {
+        ASSERT_EQUAL(gold_hist[x], test_hist[x]);
+      }
+
+      splatt_free(gold_hist);
+      splatt_free(test_hist);
+    }
+
+    tt_free(mpi_tt);
+  }
+}
+
 
 CTEST2(mpi_io, splatt_mpi_coord_load)
 {
@@ -200,7 +243,37 @@ CTEST2(mpi_io, splatt_mpi_coord_load_binary)
 }
 
 
+CTEST2(mpi_io, splatt_mpi_distribute_medium)
+{
+  for(idx_t i=0; i < data->ntensors; ++i) {
+    int npes;
+    MPI_Comm_size(MPI_COMM_WORLD, &npes);
+    if(data->tensors[i]->nnz < (idx_t) npes * 2) {
+      /* things get weird for trivially small tensors */
+      continue;
+    }
+
+    splatt_comm_info * mpi = splatt_alloc_comm_info(MPI_COMM_WORLD);
+    sptensor_t * mpi_tt = mpi_simple_distribute(datasets[i], MPI_COMM_WORLD);
+    sptensor_t * med_tt = splatt_mpi_distribute_medium(mpi_tt, mpi);
+
+    /* test dimensions */
+    int dims = 1;
+    for(idx_t m=0; m < mpi->nmodes; ++m) {
+      dims *= mpi->layer_dims[m];
+    }
+    ASSERT_EQUAL(mpi->world_npes, dims);
+
+    ASSERT_NOT_NULL(mpi->stats);
+    ASSERT_NOT_NULL(mpi->send_reqs);
+    ASSERT_NOT_NULL(mpi->recv_reqs);
+
+    tt_free(med_tt);
+    tt_free(mpi_tt);
+    splatt_free_comm_info(mpi);
+  }
+}
 
 
 
-
+#endif

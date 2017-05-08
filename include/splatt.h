@@ -39,7 +39,6 @@
 
 #include "splatt/types.h"
 #include "splatt/constants.h"
-#include "splatt/structs.h"
 
 
 /******************************************************************************
@@ -47,11 +46,11 @@
  *****************************************************************************/
 
 #include "splatt/global_options.h"
+#include "splatt/csf.h"
+#include "splatt/mpi.h"
+
 #include "splatt/cpd.h"
-#include "splatt/api_csf.h"
-#include "splatt/api_factorization.h"
 #include "splatt/api_kernels.h"
-#include "splatt/api_mpi.h"
 #include "splatt/api_options.h"
 #include "splatt/api_version.h"
 

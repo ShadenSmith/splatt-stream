@@ -176,6 +176,7 @@ double cpd_iterate(
   for(idx_t m=0; m < tensor->nmodes; ++m) {
     mats[m] = mat_mkptr(factored->factors[m], tensor->dims[m], rank, 1);
 #ifdef SPLATT_USE_MPI
+    /* setup local MTTKRP matrices */
 #else
     mttkrp_mats[m] = mats[m];
 #endif
@@ -226,12 +227,23 @@ double cpd_iterate(
     for(idx_t m=0; m < nmodes; ++m) {
       timer_fstart(&modetime[m]);
       mttkrp_csf(tensor, mttkrp_mats, m, ws->thds, mttkrp_ws, global_opts);
+#ifdef SPLATT_USE_MPI
+      /* exchange partial MTTKRP results */
+#endif
 
       /* ADMM solve for constraints */
       inner_its[m] = admm(m, mats, norms, ws, cpd_opts, global_opts);
+#ifdef SPLATT_USE_MPI
+      /* exchange updated factor rows */
+#endif
 
       /* prepare aTa for next mode */
+#ifdef SPLATT_USE_MPI
+      /* XXX use real comm */
+      mat_aTa_mpi(mats[m], ws->aTa[m], MPI_COMM_WORLD);
+#else
       mat_aTa(mats[m], ws->aTa[m]);
+#endif
 
       timer_stop(&modetime[m]);
     } /* foreach mode */

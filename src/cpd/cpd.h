@@ -24,6 +24,37 @@
  *****************************************************************************/
 
 
+
+/**
+* @brief Kruskal tensors are the output of the CPD. Each mode of the tensor is
+*        represented as a matrix with unit columns. Lambda is a vector whose
+*        entries scale the columns of the matrix factors.
+*
+*        NOTE: this is the internal data structure and should always be
+*        accessed as type `splatt_kruskal` instead.
+*/
+struct _splatt_kruskal
+{
+  /** @brief The rank of the decomposition. */
+  splatt_idx_t rank;
+
+  /** @brief The row-major matrix factors for each mode. */
+  splatt_val_t * factors[SPLATT_MAX_NMODES];
+
+  /** @brief Length-for each column. */
+  splatt_val_t * lambda;
+
+  /** @brief The number of modes in the tensor. */
+  splatt_idx_t nmodes;
+
+  /** @brief The number of rows in each factor. */
+  splatt_idx_t dims[SPLATT_MAX_NMODES];
+
+  /** @brief The quality [0,1] of the CPD */
+  double fit;
+};
+
+
 /**
 * @brief A workspace used for computing CPD factorizations.
 */

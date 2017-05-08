@@ -1,5 +1,22 @@
+/**
+* @file splatt_mpi.h
+* @brief Internal functions for distributed-memory SPLATT.
+* @author Shaden Smith <shaden@cs.umn.edu>
+* @version 2.0.0
+* @date 2016-05-10
+*/
+
+
 #ifndef SPLATT_MPI_H
 #define SPLATT_MPI_H
+
+
+/******************************************************************************
+ * INCLUDES
+ *****************************************************************************/
+#include "base.h"
+
+
 
 /******************************************************************************
  * MPI DISABLED
@@ -10,20 +27,224 @@ typedef struct
 {
   int rank;
 } rank_info;
-# else
 
+
+/**
+* @brief Dummy implementation of `splatt_comm_info` for when MPI is not
+*        enabled.
+*/
+struct _splatt_comm_info
+{
+  /**
+  * @brief My rank in comm_world.
+  */
+  int world_rank;
+
+  /**
+  * @brief The number of MPI ranks in comm_world.
+  */
+  int world_npes;
+};
+
+
+# else
 
 
 /******************************************************************************
  * FULL MPI SUPPORT
  *****************************************************************************/
 
-#include "base.h"
+
+
+
+
+
+
+
+
 
 
 /******************************************************************************
  * PUBLIC STRUCTURES
  *****************************************************************************/
+
+
+/**
+* @brief Implementation of `splatt_comm_info`. This structure holds data needed
+*        to maintain a distributed tensor and to also compute factorizations.
+*/
+struct _splatt_comm_info
+{
+  /**
+  * @brief The MPI communicator that all process live within.
+  */
+  MPI_Comm world_comm;
+
+  /**
+  * @brief My rank in comm_world.
+  */
+  int world_rank;
+
+  /**
+  * @brief The number of MPI ranks in comm_world.
+  */
+  int world_npes;
+
+
+  /*
+   * Global tensor data.
+   */
+
+  /**
+  * @brief The number of modes in the distributed tensor.
+  */
+  splatt_idx_t nmodes;
+
+  /**
+  * @brief The number of non-zeros in the globally-distributed tensor.
+  */
+  splatt_idx_t global_nnz;
+
+  /**
+  * @brief The dimensions of the globally-distributed tensor.
+  */
+  splatt_idx_t global_dims[SPLATT_MAX_NMODES];
+
+
+
+
+  /*
+   * Decomposition information.
+   */
+
+  /**
+  * @brief The type of decomposition (e.g., medium-grained).
+  */
+  splatt_decomp_type decomp;
+
+  /**
+  * @brief The communication pattern to use (e.g., point-to-point).
+  */
+  splatt_comm_type comm_type;
+
+  /**
+  * @brief The communicator resulting from arranging comm_world in a Cartesian
+  *        grid.
+  */
+  MPI_Comm grid_comm;
+
+  /**
+  * @brief My new rank in grid_comm.
+  */
+  int grid_rank;
+
+  /**
+  * @brief My coordinate in grid_comm (in terms of MPI ranks).
+  */
+  int grid_coords[SPLATT_MAX_NMODES];
+
+  /**
+  * @brief Dimensions of grid decomposition (in terms of MPI ranks). If = 0,
+  *        decomposition has not yet been established. Coarse- and fine-grained
+  *        decompositions have all modes=1.
+  */
+  int layer_dims[SPLATT_MAX_NMODES];
+
+  /**
+  * @brief MPI communicators for each layer. Will be MPI_COMM_NULL if
+  *        decomposition has not yet been established.
+  */
+  MPI_Comm layer_comms[SPLATT_MAX_NMODES];
+
+
+  /**
+  * @brief The number of MPI ranks in my layer.
+  */
+  int layer_size[SPLATT_MAX_NMODES];
+
+  /**
+  * @brief My MPI rank in my layer (layer_rank[m] is my rank in communicator
+  *        layer_comm[m]).
+  */
+  int layer_rank[SPLATT_MAX_NMODES];
+
+  /**
+  * @brief Marks the start/end of layers in terms of global_dims[].
+
+  *        layer_ptrs[m] is an array of of length layer_dims[m]+1, and entry
+  *        layer_ptrs[m][d] is the end of layer[m].
+  */
+  splatt_idx_t * layer_ptrs[SPLATT_MAX_NMODES];
+
+
+  /**
+  * @brief Marks the start/end of the matrix rows assigned to each rank in the
+  *        layer, in terms of global_dims[].
+  *
+  *        mat_ptrs[m] is an array of length (layer_size[m]+1), and rank p
+  *        owns [mat_ptrs[m][p], mat_ptrs[m][p+1]). Note that p is a rank
+  *        within communicator layer_comm[m].
+  */
+  splatt_idx_t * mat_ptrs[SPLATT_MAX_NMODES];
+
+  /**
+  * @brief The first row that I own in the layer. This is simply an alias for
+  *        mat_ptrs[m][layer_rank[m]].
+  */
+  splatt_idx_t mat_start[SPLATT_MAX_NMODES];
+
+  /**
+  * @brief The last row that I own in the layer. This is simply an alias for
+  *        mat_ptrs[m][layer_rank[m] + 1].
+  */
+  splatt_idx_t mat_end[SPLATT_MAX_NMODES];
+
+  /**
+  * @brief Whether we compress coordinate system to local with `indmap` mapping
+   *       back to global. This is useful when the tensor mode is very sparse
+   *       and messages are small. When 'dense' communication is more likely,
+   *       or packing/unpacking buffers is relatively expensive, this should be
+   *       set to false before distributing a tensor.
+  */
+  bool compress[SPLATT_MAX_NMODES];
+
+  /**
+  * @brief Mapping of local-to-global indices if a tensor mode is compressed.
+  *        indmap[m][i] specifies the index in mode 'm' of local index 'i',
+  *        mapping back into global_dims[m].
+  *
+  *        If compress[m] is false, indmap[m] is NULL.
+  */
+  splatt_idx_t * indmap[SPLATT_MAX_NMODES];
+
+
+
+  /*
+   * Communication structures.
+   */
+
+  /**
+  * @brief Requests used for various `MPI_Isend()` calls. This is an array the
+  *        length of world_npes.
+  */
+  MPI_Request * send_reqs;
+
+  /**
+  * @brief Requests used for various `MPI_Irecv()` calls. This is an array the
+  *        length of world_npes.
+  */
+  MPI_Request * recv_reqs;
+
+  /**
+  * @brief Message statuses. This is an array the length of world_npes.
+  */
+  MPI_Status * statuses;
+};
+
+
+
+
+
 
 /**
 * @brief A structure for MPI rank structures (communicators, etc.).

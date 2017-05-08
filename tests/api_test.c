@@ -73,19 +73,6 @@ CTEST(api, par_opts_alloc)
   }
 }
 
-CTEST2(api, csf_load)
-{
-  splatt_csf loaded;
-
-  for(idx_t i=0; i < data->ntensors; ++i) {
-
-#if 0
-    int ret = splatt_csf_load(datasets[i], &nmodes, &loaded, opts);
-#endif
-  }
-}
-
-
 CTEST(api, version_major)
 {
   ASSERT_EQUAL(SPLATT_VER_MAJOR, splatt_version_major());
@@ -101,5 +88,22 @@ CTEST(api, version_subminor)
   ASSERT_EQUAL(SPLATT_VER_SUBMINOR, splatt_version_subminor());
 }
 
+
+/*
+ * Test dummy MPI functions.
+ */
+#ifndef SPLATT_USE_MPI
+CTEST(mpi_comm_info, alloc)
+{
+  splatt_comm_info * mpi = splatt_alloc_comm_info();
+
+  ASSERT_NOT_NULL(mpi);
+  ASSERT_EQUAL(0, mpi->world_rank);
+  ASSERT_EQUAL(1, mpi->world_npes);
+
+  /* don't crash */
+  splatt_free_comm_info(mpi);
+}
+#endif
 
 
