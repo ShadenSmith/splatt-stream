@@ -1095,6 +1095,9 @@ sptensor_t * mpi_simple_distribute(
     }
   }
 
+  /* All processes get global dimension */
+  MPI_Allreduce(MPI_IN_PLACE, tt->dims, tt->nmodes,
+      SPLATT_MPI_IDX, MPI_MAX, comm);
 
   return tt;
 }

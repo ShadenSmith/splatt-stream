@@ -1,4 +1,3 @@
-#if 0
 #include "../ctest/ctest.h"
 #include "../splatt_test.h"
 
@@ -14,7 +13,6 @@ CTEST_DATA(mpi_io)
 {
   idx_t ntensors;
   sptensor_t * tensors[MAX_DSETS];
-  rank_info rinfo;
 };
 
 CTEST_SETUP(mpi_io)
@@ -72,6 +70,7 @@ CTEST2(mpi_io, mpi_simple_distribute)
     tt_free(mpi_tt);
   }
 }
+
 
 
 CTEST2(mpi_io, splatt_mpi_coord_load)
@@ -165,6 +164,7 @@ CTEST2(mpi_io, splatt_mpi_coord_load)
 }
 
 
+
 CTEST2(mpi_io, splatt_mpi_coord_load_binary)
 {
   int rank, npes;
@@ -242,7 +242,7 @@ CTEST2(mpi_io, splatt_mpi_coord_load_binary)
   }
 }
 
-
+#if 0
 CTEST2(mpi_io, splatt_mpi_distribute_medium)
 {
   for(idx_t i=0; i < data->ntensors; ++i) {
@@ -273,7 +273,4 @@ CTEST2(mpi_io, splatt_mpi_distribute_medium)
     splatt_free_comm_info(mpi);
   }
 }
-
-
-
 #endif
