@@ -127,6 +127,8 @@ void comm_fill_global(
     mpi->global_dims[m] = 0;
   }
 
+  /* TODO: fill dim info locally in case we haven't already */
+
   mpi->nmodes = tt->nmodes;
   MPI_Allreduce(&(tt->nnz), &(mpi->global_nnz), 1, SPLATT_MPI_IDX,
       MPI_SUM, mpi->world_comm);

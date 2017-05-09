@@ -1309,6 +1309,20 @@ int splatt_mpi_coord_load(
 }
 
 
+
+splatt_coord * splatt_mpi_distribute_cpd(
+    char const * const fname,
+    splatt_comm_info * const comm_info)
+{
+  /* do a simple distribution first */
+  splatt_coord * coord = mpi_simple_distribute(fname, comm_info);
+
+  comm_info->decomp = SPLATT_DECOMP_MEDIUM;
+
+  return tt;
+}
+
+
 splatt_coord * splatt_coord_load_mpi(
     char const * const fname,
     splatt_comm_info * const comm_info)

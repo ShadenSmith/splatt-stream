@@ -118,6 +118,10 @@ splatt_comm_info * splatt_alloc_comm_info(
     MPI_Comm comm);
 
 
+splatt_coord * splatt_mpi_distribute_cpd(
+    char const * const fname,
+    splatt_comm_info * const comm_info);
+
 
 /**
 * @brief Load a coordinate tensor from a file. This is a fast-but-simple load
