@@ -274,3 +274,55 @@ CTEST2(mpi_io, splatt_mpi_distribute_medium)
   }
 }
 #endif
+
+
+CTEST2(mpi_io, splatt_coord_load_mpi)
+{
+  for(idx_t i=0; i < data->ntensors; ++i) {
+    splatt_comm_info * mpi = splatt_alloc_comm_info(MPI_COMM_WORLD);
+    sptensor_t * mpi_tt = splatt_coord_load_mpi(datasets[i], mpi);
+
+    ASSERT_NOT_NULL(mpi_tt);
+    ASSERT_NOT_NULL(mpi_tt->ind);
+    ASSERT_NOT_NULL(mpi_tt->vals);
+    ASSERT_EQUAL(data->tensors[i]->nmodes, mpi_tt->nmodes);
+
+    /* check for global dims */
+    for(idx_t m=0; m < mpi_tt->nmodes; ++m) {
+      ASSERT_EQUAL(data->tensors[i]->dims[m], mpi_tt->dims[m]);
+    }
+
+    /* all nnz accounted for */
+    idx_t total_nnz = 0;
+    MPI_Allreduce(&(mpi_tt->nnz), &total_nnz, 1, SPLATT_MPI_IDX, MPI_SUM,
+        MPI_COMM_WORLD);
+    ASSERT_EQUAL(data->tensors[i]->nnz, total_nnz);
+
+    /* check that all inds are accounted for, too */
+    for(idx_t m=0; m < mpi_tt->nmodes; ++m) {
+      idx_t * gold_hist = tt_get_hist(data->tensors[i], m);
+
+      idx_t * test_hist = tt_get_hist(mpi_tt, m);
+      MPI_Allreduce(MPI_IN_PLACE, test_hist, (int) mpi_tt->dims[m],
+          SPLATT_MPI_IDX, MPI_SUM, MPI_COMM_WORLD);
+      for(idx_t x=0; x < mpi_tt->dims[m]; ++x) {
+        ASSERT_EQUAL(gold_hist[x], test_hist[x]);
+      }
+
+      splatt_free(gold_hist);
+      splatt_free(test_hist);
+    }
+
+    /* now ensure comm_info fields have been populated */
+    ASSERT_EQUAL(data->tensors[i]->nmodes, mpi->nmodes);
+    ASSERT_EQUAL(data->tensors[i]->nnz, mpi->global_nnz);
+    for(idx_t m=0; m < mpi_tt->nmodes; ++m) {
+      ASSERT_EQUAL(data->tensors[i]->dims[m], mpi->global_dims[m]);
+    }
+
+    tt_free(mpi_tt);
+    splatt_free_comm_info(mpi);
+  }
+}
+
+

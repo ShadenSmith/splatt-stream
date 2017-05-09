@@ -7,62 +7,7 @@
 #include "../timer.h"
 #include "../util.h"
 
-
-/******************************************************************************
- * API FUNCTONS
- *****************************************************************************/
-int splatt_mpi_csf_load(
-    char const * const fname,
-    splatt_idx_t * nmodes,
-    splatt_csf ** tensors,
-    double const * const options,
-    MPI_Comm comm)
-{
-  sptensor_t * tt = NULL;
-
-  int rank, npes;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &npes);
-
-
-  return SPLATT_SUCCESS;
-}
-
-
-
-int splatt_mpi_coord_load(
-    char const * const fname,
-    splatt_idx_t * nmodes,
-    splatt_idx_t * nnz,
-    splatt_idx_t *** inds,
-    splatt_val_t ** vals,
-    double const * const options,
-    MPI_Comm comm)
-{
-  sptensor_t * tt = mpi_simple_distribute(fname, comm);
-
-  if(tt == NULL) {
-    *nmodes = 0;
-    *nnz = 0;
-    *vals = NULL;
-    *inds = NULL;
-    return SPLATT_ERROR_BADINPUT;
-  }
-
-  *nmodes = tt->nmodes;
-  *nnz = tt->nnz;
-
-  /* copy to output */
-  *vals = tt->vals;
-  *inds = splatt_malloc(tt->nmodes * sizeof(**inds));
-  for(idx_t m=0; m < tt->nmodes; ++m) {
-    (*inds)[m] = tt->ind[m];
-  }
-
-  free(tt);
-
-  return SPLATT_SUCCESS;
-}
+#include "comm_info.h"
 
 
 /******************************************************************************
@@ -1303,5 +1248,78 @@ int mpi_determine_med_owner(
   return owner;
 }
 
+
+
+
+
+/******************************************************************************
+ * API FUNCTONS
+ *****************************************************************************/
+int splatt_mpi_csf_load(
+    char const * const fname,
+    splatt_idx_t * nmodes,
+    splatt_csf ** tensors,
+    double const * const options,
+    MPI_Comm comm)
+{
+  sptensor_t * tt = NULL;
+
+  int rank, npes;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &npes);
+
+
+  return SPLATT_SUCCESS;
+}
+
+
+
+int splatt_mpi_coord_load(
+    char const * const fname,
+    splatt_idx_t * nmodes,
+    splatt_idx_t * nnz,
+    splatt_idx_t *** inds,
+    splatt_val_t ** vals,
+    double const * const options,
+    MPI_Comm comm)
+{
+  sptensor_t * tt = mpi_simple_distribute(fname, comm);
+
+  if(tt == NULL) {
+    *nmodes = 0;
+    *nnz = 0;
+    *vals = NULL;
+    *inds = NULL;
+    return SPLATT_ERROR_BADINPUT;
+  }
+
+  *nmodes = tt->nmodes;
+  *nnz = tt->nnz;
+
+  /* copy to output */
+  *vals = tt->vals;
+  *inds = splatt_malloc(tt->nmodes * sizeof(**inds));
+  for(idx_t m=0; m < tt->nmodes; ++m) {
+    (*inds)[m] = tt->ind[m];
+  }
+
+  free(tt);
+
+  return SPLATT_SUCCESS;
+}
+
+
+splatt_coord * splatt_coord_load_mpi(
+    char const * const fname,
+    splatt_comm_info * const comm_info)
+{
+  /* Load and distribute the tensor */
+  splatt_coord * coord = mpi_simple_distribute(fname, comm_info->world_comm);
+
+  /* Fill global data about the tensor (nnz, dims, etc.) */
+  comm_fill_global(coord, comm_info);
+
+  return coord;
+}
 
 

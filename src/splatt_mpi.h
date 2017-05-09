@@ -499,8 +499,8 @@ sptensor_t * mpi_tt_read(
 /**
 * @brief Do a simple distribution of the tensor stored in file 'ifname'.
 *        Load balance is based on nonzero count. No communication or other
-*        heuristics used. Tensor nonzeros are distributed among MPI
-*        communicator rinfo->comm_3d.
+*        heuristics used. Tensor nonzeros are distributed among communicator
+*        'comm'.
 *
 * @param ifname The file to read from.
 * @param comm The communicator to distribute among

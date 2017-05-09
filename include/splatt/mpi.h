@@ -118,6 +118,25 @@ splatt_comm_info * splatt_alloc_comm_info(
     MPI_Comm comm);
 
 
+
+/**
+* @brief Load a coordinate tensor from a file. This is a fast-but-simple load
+*        which in which Load balance is based on non-zero count. No
+*        communication or other heuristics used.
+*
+* @param fname The file to read.
+* @param comm_info The communication structure previously allocated by
+*                  `splatt_alloc_comm_info()`.
+*
+* @return A distributed tensor. Each MPI rank will have roughly the same number
+*         of non-zeros.
+*/
+splatt_coord * splatt_coord_load_mpi(
+    char const * const fname,
+    splatt_comm_info * const comm_info);
+
+
+
 /**
 * @brief Read a tensor from a file, distribute among an MPI communicator, and
 *        convert to CSF format.
