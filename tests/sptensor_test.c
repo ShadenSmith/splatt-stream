@@ -31,15 +31,18 @@ CTEST_TEARDOWN(sptensor)
 
 CTEST2(sptensor, splatt_alloc_coord)
 {
-  splatt_coord * coord = splatt_alloc_coord();
+  splatt_coord * coord = splatt_alloc_coord(3, 5);
 
   ASSERT_NOT_NULL(coord);
 
-  ASSERT_EQUAL(0, coord->nmodes);
-  ASSERT_EQUAL(0, coord->nnz);
+  ASSERT_EQUAL(3, coord->nmodes);
+  ASSERT_EQUAL(5, coord->nnz);
 
-  ASSERT_NULL(coord->vals);
-  for(idx_t m=0; m < SPLATT_MAX_NMODES; ++m) {
+  ASSERT_NOT_NULL(coord->vals);
+  for(idx_t m=0; m < 3; ++m) {
+    ASSERT_NOT_NULL(coord->ind[m]);
+  }
+  for(idx_t m=3; m < MAX_NMODES; ++m) {
     ASSERT_NULL(coord->ind[m]);
   }
 

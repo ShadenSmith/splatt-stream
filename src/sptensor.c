@@ -36,6 +36,32 @@ static inline int p_same_coord(
 }
 
 
+/**
+* @brief Allocate an empty coordinate tensor structure.
+*
+* @return The allocated structure.
+*/
+splatt_coord * p_alloc_coord_empty()
+{
+  splatt_coord * coord = splatt_malloc(sizeof(*coord));
+
+  /* initialize values */
+  coord->nmodes = 0;
+  for(idx_t m=0; m < MAX_NMODES; ++m) {
+    coord->dims[m] = 0;
+  }
+  coord->nnz = 0;
+
+  coord->vals = NULL;
+  for(idx_t m=0; m < MAX_NMODES; ++m) {
+    coord->ind[m]    = NULL;
+    coord->indmap[m] = NULL;
+  }
+
+  return coord;
+}
+
+
 
 
 /******************************************************************************
@@ -237,22 +263,14 @@ sptensor_t * tt_read(
 }
 
 
+/*
+ * XXX remove
+ */
 sptensor_t * tt_alloc(
   idx_t const nnz,
   idx_t const nmodes)
 {
-  sptensor_t * tt = splatt_alloc_coord();
-  tt->tiled = SPLATT_NOTILE;
-
-  tt->nnz = nnz;
-  tt->nmodes = nmodes;
-
-  tt->vals = splatt_malloc(nnz * sizeof(*tt->vals));
-  for(idx_t m=0; m < nmodes; ++m) {
-    tt->ind[m] = splatt_malloc(nnz * sizeof(**tt->ind));
-  }
-
-  return tt;
+  return splatt_alloc_coord(nmodes, nnz);
 }
 
 
@@ -326,24 +344,22 @@ spmatrix_t * tt_unfold(
  * API FUNCTONS
  *****************************************************************************/
 
-
-
-splatt_coord * splatt_alloc_coord()
+splatt_coord * splatt_alloc_coord(
+    splatt_idx_t const num_modes,
+    splatt_idx_t const nnz)
 {
-  splatt_coord * coord = splatt_malloc(sizeof(*coord));
+  splatt_coord * coord = p_alloc_coord_empty();
 
-  /* initialize values */
-  coord->nmodes = 0;
-  for(idx_t m=0; m < MAX_NMODES; ++m) {
-    coord->dims[m] = 0;
-  }
-  coord->nnz = 0;
+  coord->nmodes = num_modes;
+  coord->nnz = nnz;
 
-  coord->vals = NULL;
-  for(idx_t m=0; m < MAX_NMODES; ++m) {
-    coord->ind[m]    = NULL;
-    coord->indmap[m] = NULL;
+  coord->vals = splatt_malloc(nnz * sizeof(*coord->vals));
+  for(idx_t m=0; m < num_modes; ++m) {
+    coord->ind[m] = splatt_malloc(nnz * sizeof(**coord->ind));
   }
+
+  /* XXX */
+  coord->tiled = SPLATT_NOTILE;
 
   return coord;
 }
@@ -372,6 +388,72 @@ splatt_error_type splatt_coord_load(
 {
   /* XXX */
   return SPLATT_ERROR_BADINPUT;
+}
+
+
+
+
+/*
+ * Accessors
+ */
+
+
+splatt_idx_t splatt_coord_get_nnz(
+    splatt_coord const * const coord)
+{
+  if(coord == NULL) {
+    fprintf(stderr, "SPLATT ERROR: splatt_coord_get_nnz() NULL tensor.\n");
+    return 0;
+  }
+
+  return coord->nnz;
+}
+
+
+
+
+splatt_idx_t splatt_coord_get_modes(
+    splatt_coord const * const coord)
+{
+  if(coord == NULL) {
+    fprintf(stderr, "SPLATT ERROR: splatt_coord_get_modes() NULL tensor.\n");
+    return 0;
+  }
+
+  return coord->nmodes;
+}
+
+
+
+
+splatt_idx_t * splatt_coord_get_inds(
+    splatt_coord const * const coord,
+    splatt_idx_t const mode)
+{
+  /* sanity check */
+  if(mode >= coord->nmodes) {
+    fprintf(stderr, "SPLATT ERROR: splatt_coord_get_inds() invalid mode:"
+                    " (%"SPLATT_PF_IDX" of only %"SPLATT_PF_IDX" modes).\n",
+            mode, coord->nmodes);
+    return NULL;
+  }
+
+  assert(coord->ind[mode] != NULL);
+  return coord->ind[mode];
+}
+
+
+splatt_val_t * splatt_coord_get_vals(
+    splatt_coord const * const coord)
+{
+  /* sanity check */
+  if(coord->nmodes == 0) {
+    fprintf(stderr, "SPLATT ERROR: splatt_coord_get_vals(): empty tensor.\n");
+    return NULL;
+  }
+
+  assert(coord->vals != NULL);
+  return coord->vals;
 }
 
 

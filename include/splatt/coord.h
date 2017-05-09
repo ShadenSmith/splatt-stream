@@ -33,14 +33,26 @@ typedef struct _splatt_coord splatt_coord;
 extern "C" {
 #endif
 
+/*
+ * Memory management.
+ */
+
 
 /**
 * @brief Allocate a structure to represent a coordinate tensor. This data
 *        structure must be freed by `splatt_free_coord()`.
 *
-* @return The allocated memory.
+*        NOTE: this function will not initialize any of the non-zero values or
+*        indices.
+*
+* @param num_modes The number of modes in the tensor.
+* @param nnz The number of non-zeros in the tensor.
+*
+* @return The allocated tensor.
 */
-splatt_coord * splatt_alloc_coord();
+splatt_coord * splatt_alloc_coord(
+    splatt_idx_t const num_modes,
+    splatt_idx_t const nnz);
 
 
 /**
@@ -67,6 +79,53 @@ void splatt_free_coord(
 splatt_error_type splatt_coord_load(
     char const * const fname,
     splatt_coord * const coord);
+
+/*
+ * Accessors.
+ */
+
+
+/**
+* @brief Get the number of non-zeros in a tensor.
+*
+* @param coord The sparse tensor.
+*
+* @return The number of non-zeros.
+*/
+splatt_idx_t splatt_coord_get_nnz(
+    splatt_coord const * const coord);
+
+/**
+* @brief Get the number of modes in a tensor.
+*
+* @param coord The sparse tensor.
+*
+* @return The number of modes.
+*/
+splatt_idx_t splatt_coord_get_modes(
+    splatt_coord const * const coord);
+
+/**
+* @brief Get an array of indices for one of the tensor modes.
+*
+* @param coord The sparse tensor to query.
+* @param mode The mode of interest.
+*
+* @return An array of indices for mode 'mode'.
+*/
+splatt_idx_t * splatt_coord_get_inds(
+    splatt_coord const * const coord,
+    splatt_idx_t const mode);
+
+/**
+* @brief Get the array of values for the tensor non-zeros.
+*
+* @param coord The sparse tensor.
+*
+* @return The sparse tensor's non-zeros.
+*/
+splatt_val_t * splatt_coord_get_vals(
+    splatt_coord const * const coord);
 
 
 #ifdef __cplusplus
