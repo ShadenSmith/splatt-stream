@@ -460,20 +460,34 @@ static struct argp cpd_argp =
  * SPLATT-CPD
  *****************************************************************************/
 
-int splatt_cpd_cmd2(
+int splatt_cpd_cmd(
   int argc,
   char ** argv)
 {
-  print_header();
-
   cpd_cmd_args args;
   default_cpd_opts(&args);
   argp_parse(&cpd_argp, argc, argv, ARGP_IN_ORDER | ARGP_NO_HELP, 0, &args);
 
-  sptensor_t * tt = tt_read(args.ifname);
+#ifdef SPLATT_USE_MPI
+  splatt_comm_info * comm = splatt_alloc_comm_info(MPI_COMM_WORLD);
+#else
+  splatt_comm_info * comm = splatt_alloc_comm_info();
+#endif
+
+  if(comm->world_rank == 0) {
+    print_header();
+  }
+
+  /* Load tensor */
+#ifdef SPLATT_USE_MPI
+  splatt_coord * tt = splatt_mpi_distribute_cpd(args.ifname, args.cpd_opts, comm);
+#else
+  splatt_coord * tt = tt_read(args.ifname);
+#endif
   if(tt == NULL) {
     return SPLATT_ERROR_BADINPUT;
   }
+
 
   stats_tt(tt, args.ifname, STATS_BASIC, 0, NULL);
 
@@ -522,6 +536,7 @@ int splatt_cpd_cmd2(
   splatt_free_opts(args.opts);
   splatt_free_cpd_opts(args.cpd_opts);
   splatt_free_global_opts(args.global_opts);
+  splatt_free_comm_info(comm);
 
   return EXIT_SUCCESS;
 }

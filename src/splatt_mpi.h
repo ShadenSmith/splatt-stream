@@ -494,7 +494,6 @@ sptensor_t * mpi_tt_read(
   rank_info * const rinfo);
 
 
-
 #define mpi_simple_distribute splatt_mpi_simple_distribute
 /**
 * @brief Do a simple distribution of the tensor stored in file 'ifname'.

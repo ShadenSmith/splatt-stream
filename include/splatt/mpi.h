@@ -11,6 +11,8 @@
 #define SPLATT_INCLUDE_MPI_H
 
 
+#include "cpd.h"
+
 
 /**
 * @brief Tensor decomposition schemes.
@@ -118,9 +120,47 @@ splatt_comm_info * splatt_alloc_comm_info(
     MPI_Comm comm);
 
 
+
+
+/**
+* @brief Read a tensor from a file and distribute. The distribution will be
+*        chosen in order to optimize CPD computation.
+*
+* @param fname The file to read.
+* @param cpd_opts CPD factorization options. Constraints and rank may be used
+*                 to optimize the data distribution.
+* @param[out] comm_info MPI communication data which will store information
+*                       about the distribution. This should have been allocated
+*                       by `splatt_alloc_comm_info()`.
+*
+* @return  A distributed tensor which is optimized for CPD computation.
+*/
 splatt_coord * splatt_mpi_distribute_cpd(
     char const * const fname,
+    splatt_cpd_opts const * const cpd_opts,
     splatt_comm_info * const comm_info);
+
+
+
+/**
+* @brief Rearrange a distributed tensor in order to optimize computation for a
+*        CPD.
+*
+* @param coord The distributed tensor to rearrange. This may be modified during
+*              rearrangement (e.g., sorted) but will not be destroyed.
+* @param cpd_opts CPD factorization options. Constraints and rank may be used
+*                 to optimize the data distribution.
+* @param[out] comm_info MPI communication data which will store information
+*                       about the distribution. This should have been allocated
+*                       by `splatt_alloc_comm_info()`.
+*
+* @return  A rearranged 'coord' which is optimized for CPD computation.
+*/
+splatt_coord * splatt_mpi_rearrange_cpd(
+    splatt_coord * const coord,
+    splatt_cpd_opts const * const cpd_opts,
+    splatt_comm_info * const comm_info);
+
 
 
 /**
@@ -140,14 +180,13 @@ splatt_coord * splatt_coord_load_mpi(
     splatt_comm_info * const comm_info);
 
 
-
 /**
 * @brief Read a tensor from a file, distribute among an MPI communicator, and
 *        convert to CSF format.
 *
 * @param fname The filename to read from.
 * @param[out] nmodes SPLATT will fill in the number of modes found.
-* @param[out] tensors An array of splatt_csf structure(s). Allocation scheme
+splatt_mpi_coord_loasplatt_mpi_coord_loasplatt_mpi_coord_load @param[out] tensors An array of splatt_csf structure(s). Allocation scheme
 *                follows opts[SPLATT_OPTION_CSF_ALLOC].
 * @param options An options array allocated by splatt_default_opts(). The
 *                distribution scheme follows opts[SPLATT_OPTION_DECOMP].

@@ -47,18 +47,11 @@ static inline void print_header(void)
 /******************************************************************************
  * SPLATT COMMAND PROTOTYPES
  *****************************************************************************/
-#ifdef SPLATT_USE_MPI
-int splatt_mpi_cpd_cmd(int argc, char ** argv);
-#else
 int splatt_cpd_cmd(int argc, char ** argv);
-#endif
 int splatt_check(int argc, char ** argv);
 int splatt_convert(int argc, char ** argv);
 int splatt_reorder(int argc, char ** argv);
 int splatt_stats(int argc, char ** argv);
-
-
-int splatt_cpd_cmd2(int argc, char ** argv);
 
 
 /******************************************************************************
@@ -74,19 +67,12 @@ typedef struct
 
 
 static cmd_struct const splatt_cmds[] = {
-#ifdef SPLATT_USE_MPI
-  { "cpd", splatt_mpi_cpd_cmd },
-#else
-  //{ "cpd", splatt_cpd_cmd },
-  { "cpd", splatt_cpd_cmd2 },
-#endif
-
-  { "check", splatt_check },
+  { "cpd",     splatt_cpd_cmd },
+  { "check",   splatt_check },
   { "convert", splatt_convert },
   { "reorder", splatt_reorder },
-  { "stats", splatt_stats },
-  { "help", NULL},
-
+  { "stats",   splatt_stats },
+  { "help",    NULL},
   { NULL, NULL }
 };
 
