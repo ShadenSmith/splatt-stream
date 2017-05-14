@@ -164,6 +164,28 @@ splatt_coord * splatt_mpi_rearrange_cpd(
 
 
 /**
+* @brief Rearrange a distribute tensor into a medium-grained decomposition.
+*
+* @param coord The distributed tensor to rearrange. This may be modified during
+*              rearrangement (e.g., sorted) but will not be destroyed.
+* @param rank_dims The dimensions of the Cartesian grid in terms of MPI ranks.
+*                  If this is NULL, SPLATT will find a high-quality grid for
+*                  you.
+* @param[out] comm_info MPI communication data which will store information
+*                       about the distribution. This should have been allocated
+*                       by `splatt_alloc_comm_info()`.
+*
+* @return  A rearranged 'coord' which is optimized for CPD computation.
+*/
+splatt_coord * splatt_mpi_rearrange_medium(
+    splatt_coord * const coord,
+    int const * const rank_dims,
+    splatt_comm_info * const comm_info);
+
+
+
+
+/**
 * @brief Load a coordinate tensor from a file. This is a fast-but-simple load
 *        which in which Load balance is based on non-zero count. No
 *        communication or other heuristics used.
@@ -178,6 +200,8 @@ splatt_coord * splatt_mpi_rearrange_cpd(
 splatt_coord * splatt_coord_load_mpi(
     char const * const fname,
     splatt_comm_info * const comm_info);
+
+
 
 
 /**

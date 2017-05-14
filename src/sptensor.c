@@ -278,6 +278,10 @@ sptensor_t * tt_alloc(
 void tt_free(
   sptensor_t * tt)
 {
+  if(tt == NULL) {
+    return;
+  }
+
   splatt_free(tt->vals);
   for(idx_t m=0; m < tt->nmodes; ++m) {
     splatt_free(tt->ind[m]);

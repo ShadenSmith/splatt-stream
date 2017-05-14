@@ -472,55 +472,6 @@ static void p_fill_ssizes(
 
 
 /**
-* @brief Fill in the best MPI dimensions we can find. The truly optimal
-*        solution should involve the tensor's sparsity pattern, but in general
-*        this works as good (but usually better) than the hand-tuned dimensions
-*        that we tried.
-*
-* @param rinfo MPI rank information.
-*/
-static void p_get_best_mpi_dim(
-  rank_info * const rinfo)
-{
-  int nprimes = 0;
-  int * primes = get_primes(rinfo->npes, &nprimes);
-
-  idx_t total_size = 0;
-  for(idx_t m=0; m < rinfo->nmodes; ++m) {
-    total_size += rinfo->global_dims[m];
-
-    /* reset mpi dims */
-    rinfo->dims_3d[m] = 1;
-  }
-  idx_t target = total_size / (idx_t)rinfo->npes;
-
-  long diffs[MAX_NMODES];
-
-  /* start from the largest prime */
-  for(int p = nprimes-1; p >= 0; --p) {
-    int furthest = 0;
-    /* find dim furthest from target */
-    for(idx_t m=0; m < rinfo->nmodes; ++m) {
-      /* distance is current - target */
-      idx_t const curr = rinfo->global_dims[m] / rinfo->dims_3d[m];
-      /* avoid underflow */
-      diffs[m] = (curr > target) ? (curr - target) : 0;
-
-      if(diffs[m] > diffs[furthest]) {
-        furthest = m;
-      }
-    }
-
-    /* assign p processes to furthest mode */
-    rinfo->dims_3d[furthest] *= primes[p];
-  }
-
-  free(primes);
-}
-
-
-
-/**
 * @brief Read a sparse tensor in coordinate form from a text file and
 *        and distribute among MPI ranks.
 *
@@ -728,7 +679,7 @@ sptensor_t * mpi_tt_read(
   /* first compute MPI dimension if not specified by the user */
   if(rinfo->decomp == DEFAULT_MPI_DISTRIBUTION) {
     rinfo->decomp = SPLATT_DECOMP_MEDIUM;
-    p_get_best_mpi_dim(rinfo);
+    //p_get_best_mpi_dim(rinfo);
   }
 
   mpi_setup_comms(rinfo);
@@ -1216,40 +1167,6 @@ int splatt_mpi_coord_load(
   free(tt);
 
   return SPLATT_SUCCESS;
-}
-
-
-
-
-splatt_coord * splatt_mpi_distribute_cpd(
-    char const * const fname,
-    splatt_cpd_opts const * const cpd_opts,
-    splatt_comm_info * const comm_info)
-{
-  /* do a simple distribution first */
-  splatt_coord * coord = splatt_coord_load_mpi(fname, comm_info);
-
-  /* rearrange for a CPD */
-  splatt_coord * tt_cpd = splatt_mpi_rearrange_cpd(coord, cpd_opts, comm_info);
-
-  /* clean up */
-  assert(tt_cpd != coord);
-  tt_free(coord);
-
-  return tt_cpd;
-}
-
-
-
-
-splatt_coord * splatt_mpi_rearrange_cpd(
-    splatt_coord * const coord,
-    splatt_cpd_opts const * const cpd_opts,
-    splatt_comm_info * const comm_info)
-{
-  comm_info->decomp = SPLATT_DECOMP_MEDIUM;
-
-  return NULL;
 }
 
 

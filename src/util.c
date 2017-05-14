@@ -89,8 +89,14 @@ int * get_primes(
   int N,
   int * nprimes)
 {
+  /* silly base case */
+  if(N == 0) {
+    *nprimes = 0;
+    return NULL;
+  }
+
   int size = 10;
-  int * p = (int *) splatt_malloc(size * sizeof(int));
+  int * p = malloc(size * sizeof(*p));
   int np = 0;
 
   while(N != 1) {
@@ -104,7 +110,7 @@ int * get_primes(
 
     /* realloc if necessary */
     if(size == np) {
-      p = (int *) realloc(p, size * 2 * sizeof(int));
+      p = realloc(p, size * 2 * sizeof(*p));
     }
 
     p[np++] = i;

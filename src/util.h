@@ -100,7 +100,7 @@ idx_t argmin_elem(
 * @param N The number to factor.
 * @param nprimes The number of primes found.
 *
-* @return The list of primes. This must be deallocated with free().
+* @return The list of primes. This must be deallocated with `free()`.
 */
 int * get_primes(
   int N,

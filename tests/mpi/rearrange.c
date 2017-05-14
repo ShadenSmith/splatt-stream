@@ -3,6 +3,7 @@
 #include "../splatt_test.h"
 
 #include "../../src/io.h"
+#include "../../src/util.h"
 #include "../../src/sptensor.h"
 #include "../../src/splatt_mpi.h"
 
@@ -125,6 +126,70 @@ CTEST2(mpi_rearrange, mpi_rearrange_by_part_all1)
     tt_free(mpi_tt);
     splatt_free(parts);
   }
+}
+
+
+CTEST2(mpi_rearrange, mpi_rearrange_medium_best)
+{
+  splatt_comm_info * mpi = splatt_alloc_comm_info(MPI_COMM_WORLD);
+  splatt_cpd_opts * opts = splatt_alloc_cpd_opts();
+  for(idx_t i=0; i < data->ntensors; ++i) {
+    splatt_coord * mpi_tt = splatt_coord_load_mpi(datasets[i], mpi);
+
+    /* rearrange */
+    splatt_coord * med = splatt_mpi_rearrange_medium(mpi_tt, NULL, mpi);
+
+    ASSERT_EQUAL(SPLATT_DECOMP_MEDIUM, mpi->decomp);
+
+    tt_free(med);
+    tt_free(mpi_tt);
+  }
+  splatt_free_comm_info(mpi);
+}
+
+
+CTEST2(mpi_rearrange, mpi_rearrange_medium_fixeddim)
+{
+  int npes;
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &npes);
+
+  int nprimes = 0;
+  int * primes = get_primes(npes, &nprimes);
+
+  /* each rank needs to create the same decomposition */
+  srand(5);
+
+  splatt_comm_info * mpi = splatt_alloc_comm_info(MPI_COMM_WORLD);
+  splatt_cpd_opts * opts = splatt_alloc_cpd_opts();
+  for(idx_t i=0; i < data->ntensors; ++i) {
+    splatt_coord * mpi_tt = splatt_coord_load_mpi(datasets[i], mpi);
+
+    /* create dimensions */
+    int dims[SPLATT_MAX_NMODES];
+    for(idx_t m=0; m < mpi_tt->nmodes; ++m) {
+      dims[m] = 1;
+    }
+    for(int p=0; p < nprimes; ++p) {
+      idx_t const m = rand_idx() % mpi_tt->nmodes;
+      dims[m] *= primes[p];
+    }
+
+    /* rearrange */
+    splatt_coord * med = splatt_mpi_rearrange_medium(mpi_tt, dims, mpi);
+
+    ASSERT_EQUAL(mpi_tt->nmodes, mpi->nmodes);
+    ASSERT_EQUAL(SPLATT_DECOMP_MEDIUM, mpi->decomp);
+    for(idx_t m=0; m < mpi_tt->nmodes; ++m) {
+      ASSERT_EQUAL(dims[m], mpi->layer_dims[m]);
+    }
+
+    tt_free(med);
+    tt_free(mpi_tt);
+  }
+  splatt_free_comm_info(mpi);
+  free(primes);
 }
 
 
