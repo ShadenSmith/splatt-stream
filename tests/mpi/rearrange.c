@@ -131,20 +131,38 @@ CTEST2(mpi_rearrange, mpi_rearrange_by_part_all1)
 
 CTEST2(mpi_rearrange, mpi_rearrange_medium_best)
 {
-  splatt_comm_info * mpi = splatt_alloc_comm_info(MPI_COMM_WORLD);
   splatt_cpd_opts * opts = splatt_alloc_cpd_opts();
   for(idx_t i=0; i < data->ntensors; ++i) {
+    splatt_comm_info * mpi = splatt_alloc_comm_info(MPI_COMM_WORLD);
     splatt_coord * mpi_tt = splatt_coord_load_mpi(datasets[i], mpi);
 
     /* rearrange */
     splatt_coord * med = splatt_mpi_rearrange_medium(mpi_tt, NULL, mpi);
 
+    /* inspect decomposition */
     ASSERT_EQUAL(SPLATT_DECOMP_MEDIUM, mpi->decomp);
+    for(idx_t m=0; m < mpi_tt->nmodes; ++m) {
+      ASSERT_NOT_NULL(mpi->layer_ptrs[m]);
+      ASSERT_EQUAL(0, mpi->layer_ptrs[m][0]);
+      ASSERT_EQUAL(mpi->global_dims[m],
+                   mpi->layer_ptrs[m][mpi->layer_dims[m]]);
+    }
+
+    /* inspect new tensor */
+    ASSERT_NOT_NULL(med);
+    ASSERT_EQUAL(mpi_tt->nmodes, med->nmodes);
+    idx_t total_nnz = med->nnz;
+    MPI_Allreduce(MPI_IN_PLACE, &total_nnz, 1, SPLATT_MPI_IDX, MPI_SUM,
+        MPI_COMM_WORLD);
+    ASSERT_EQUAL(mpi->global_nnz, total_nnz);
+
+    /* now go over all nnz and ensure indices are in proper range */
+
 
     tt_free(med);
     tt_free(mpi_tt);
+    splatt_free_comm_info(mpi);
   }
-  splatt_free_comm_info(mpi);
 }
 
 

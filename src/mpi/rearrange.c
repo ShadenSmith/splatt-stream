@@ -5,6 +5,7 @@
 
 #include "../splatt_mpi.h"
 #include "../util.h"
+#include "../ccp/ccp.h"
 #include "comm_info.h"
 
 
@@ -17,18 +18,33 @@
 
 
 /**
-* @brief Find the boundaries for one dimensions of the medium-grained
+* @brief Find the boundaries for one dimension of the medium-grained
 *        decomposition.
 *
-* @param hist The number of nonzeros found in each index of the given mode.
-* @param mpi MPI rank information.
+* @param coord The tensor we are partitioning.
+* @param mode The mode we are partitioning.
+* @param[outt] mpi MPI rank information.
 */
-static void p_find_layer_boundaries(
-    idx_t const * const hist,
-    idx_t const nslices,
+static idx_t * p_partition_mode_by_nnz(
+    splatt_coord const * const coord,
+    idx_t const mode,
+    idx_t const nparts,
     splatt_comm_info * const mpi)
 {
-  //partition_1d(hist, nslices, mpi->layer_ptrs
+  /* build histogram of nnz to determine boundaries of each mode */
+  idx_t * slice_hist = tt_get_hist(coord, mode);
+  MPI_Allreduce(
+      MPI_IN_PLACE, slice_hist,
+      mpi->global_dims[mode], SPLATT_MPI_IDX, MPI_SUM,
+      mpi->grid_comm);
+
+  /* partition mode */
+  assert(nparts > 0);
+  idx_t * part = partition_1d(slice_hist, mpi->global_dims[mode], nparts);
+
+  splatt_free(slice_hist);
+
+  return part;
 }
 
 
@@ -80,6 +96,86 @@ static void p_get_best_med_dim(
   free(primes);
 }
 
+
+
+
+
+static int p_determine_med_owner(
+  splatt_coord const * const tt,
+  idx_t const n,
+  splatt_comm_info const * const mpi)
+{
+  int coords[MAX_NMODES];
+
+  assert(mpi->decomp == SPLATT_DECOMP_MEDIUM);
+
+  /* determine the coordinates of the owner rank */
+  for(idx_t m=0; m < tt->nmodes; ++m) {
+    idx_t const id = tt->ind[m][n];
+    /* silly linear scan over each layer.
+     * TODO: do a binary search */
+    for(int l=0; l <= mpi->layer_dims[m]; ++l) {
+      if(id < mpi->layer_ptrs[m][l]) {
+        coords[m] = l-1;
+        break;
+      }
+    }
+  }
+
+  /* translate that to an MPI rank */
+  int owner;
+  MPI_Cart_rank(mpi->grid_comm, coords, &owner);
+  return owner;
+}
+
+
+
+
+/**
+* @brief Fill in grid dimensions for a medium-grained decomposition. If
+*        rank_dims is NULL, find a good arrangement.
+*
+* @param[out] mpi MPI structure to fill.
+* @param rank_dims Requested dimensions. This can be NULL for no request.
+*
+* @return True, if the requested dimension is valid or we were able to find a
+*         decomposition (always true). False if the requested decomposition is
+*         invalid.
+*/
+static bool p_fill_dim_medium(
+    splatt_comm_info * const mpi,
+    int const * const rank_dims)
+{
+  /* set medium-grained dimensions */
+  if(rank_dims == NULL) {
+    p_get_best_med_dim(mpi);
+  } else {
+    for(idx_t m=0; m < mpi->nmodes; ++m) {
+      mpi->layer_dims[m] = rank_dims[m];
+    }
+  }
+
+  /* sanity check */
+  int total_p = 1;
+  for(idx_t m=0; m < mpi->nmodes; ++m) {
+    total_p *= mpi->layer_dims[m];
+  }
+  if(total_p != mpi->world_npes) {
+    fprintf(stderr, "SPLATT ERROR: supplied medium-grained decomposition "
+                    "requires %d MPI ranks, but only have %d.\n",
+            total_p, mpi->world_npes);
+
+    /* Empty the comm_info and return. */
+    for(idx_t m=0; m < mpi->nmodes; ++m) {
+      mpi->layer_dims[m] = 0;
+    }
+    mpi->nmodes = 0;
+    return false;
+  }
+  assert(total_p == mpi->world_npes);
+
+  return true;
+}
 
 
 /**
@@ -268,46 +364,48 @@ splatt_coord * splatt_mpi_rearrange_medium(
   comm_fill_global(coord, comm_info);
   comm_info->decomp = SPLATT_DECOMP_MEDIUM;
 
-  /* set medium-grained dimensions */
-  if(rank_dims == NULL) {
-    p_get_best_med_dim(comm_info);
-  } else {
-    for(idx_t m=0; m < comm_info->nmodes; ++m) {
-      comm_info->layer_dims[m] = rank_dims[m];
-    }
-  }
-
-  /* sanity check */
-  int total_p = 1;
-  for(idx_t m=0; m < comm_info->nmodes; ++m) {
-    total_p *= comm_info->layer_dims[m];
-  }
-  if(total_p != comm_info->world_npes) {
-    fprintf(stderr, "SPLATT ERROR: supplied medium-grained decomposition "
-                    "requires %d MPI ranks, but only have %d.\n",
-            total_p, comm_info->world_npes);
-
-    /* Empty the comm_info and return. */
-    for(idx_t m=0; m < comm_info->nmodes; ++m) {
-      comm_info->layer_dims[m] = 0;
-    }
-    comm_info->nmodes = 0;
-    return NULL;
-  }
-  assert(total_p == comm_info->world_npes);
+  /* setup grid dimensions */
+  p_fill_dim_medium(comm_info, rank_dims);
 
   /* build cartiesan communicators */
   p_setup_comms_medium(comm_info);
 
-  /* build histogram to determine boundaries of each mode */
+  /* partition each mode separately */
   for(idx_t m=0; m < coord->nmodes; ++m) {
-    idx_t * slice_hist = tt_get_hist(coord, m);
-    MPI_Allreduce(MPI_IN_PLACE, slice_hist, 1, SPLATT_MPI_IDX, MPI_SUM,
-        comm_info->grid_comm);
+    comm_info->layer_ptrs[m] = p_partition_mode_by_nnz(coord, m,
+        comm_info->layer_dims[m], comm_info);
   }
 
+  /* figure out which MPI rank each nnz goes to */
+  int * parts = splatt_malloc(coord->nnz * sizeof(*parts));
+  #pragma omp parallel for schedule(static)
+  for(idx_t n=0; n < coord->nnz; ++n) {
+    parts[n] = p_determine_med_owner(coord, n, comm_info);
+  }
 
-  return NULL;
+  /* rearrange the data */
+  splatt_coord * medium = mpi_rearrange_by_part(coord, parts,
+      comm_info->grid_comm);
+  splatt_free(parts);
+
+  /* now map tensor indices to local (layer) coordinates and fill in dims */
+  for(idx_t m=0; m < medium->nmodes; ++m) {
+    idx_t const layer_start
+        = comm_info->layer_ptrs[m][comm_info->grid_coords[m]];
+    idx_t const layer_end
+        = comm_info->layer_ptrs[m][comm_info->grid_coords[m] + 1];
+
+    medium->dims[m] = layer_end - layer_start;
+
+    #pragma omp parallel for schedule(static)
+    for(idx_t n=0; n < medium->nnz; ++n) {
+      assert(medium->ind[m][n] >= layer_start);
+      assert(medium->ind[m][n] < layer_end);
+      medium->ind[m][n] -= layer_start;
+    }
+  }
+
+  return medium;
 }
 
 
