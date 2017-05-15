@@ -101,9 +101,9 @@ static void p_get_best_med_dim(
 
 
 static int p_determine_med_owner(
-  splatt_coord const * const tt,
-  idx_t const n,
-  splatt_comm_info const * const mpi)
+    splatt_coord const * const tt,
+    idx_t const n,
+    splatt_comm_info const * const mpi)
 {
   int coords[MAX_NMODES];
 
