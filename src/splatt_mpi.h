@@ -158,7 +158,8 @@ struct _splatt_comm_info
 
 
   /**
-  * @brief The number of MPI ranks in my layer.
+  * @brief The number of MPI ranks in my layer. This should be 
+  *        prod(layer_dims[:]) / layer_dims[m].
   */
   int layer_size[SPLATT_MAX_NMODES];
 
@@ -170,7 +171,7 @@ struct _splatt_comm_info
 
   /**
   * @brief Marks the start/end of layers in terms of global_dims[].
-
+  *
   *        layer_ptrs[m] is an array of of length layer_dims[m]+1, and entry
   *        layer_ptrs[m][d] is the end of layer[m].
   */

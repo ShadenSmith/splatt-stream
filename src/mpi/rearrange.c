@@ -14,6 +14,25 @@
  * PRIVATE FUNCTIONS
  *****************************************************************************/
 
+
+
+/**
+* @brief Find the boundaries for one dimensions of the medium-grained
+*        decomposition.
+*
+* @param hist The number of nonzeros found in each index of the given mode.
+* @param mpi MPI rank information.
+*/
+static void p_find_layer_boundaries(
+    idx_t const * const hist,
+    idx_t const nslices,
+    splatt_comm_info * const mpi)
+{
+  //partition_1d(hist, nslices, mpi->layer_ptrs
+}
+
+
+
 /**
 * @brief Fill in the best MPI dimensions we can find. The truly optimal
 *        solution should involve the tensor's sparsity pattern, but in general
@@ -62,6 +81,43 @@ static void p_get_best_med_dim(
 }
 
 
+
+/**
+* @brief Setup communicatory info for a MG distribution.
+*
+* @param mpi MPI rank information to fill in.
+*/
+static void p_setup_comms_medium(
+    splatt_comm_info * const mpi)
+{
+  int periods[MAX_NMODES];
+
+  idx_t const nmodes = mpi->nmodes;
+
+  for(idx_t m=0; m < nmodes; ++m) {
+    periods[m] = 1;
+  }
+
+  /* create new communicator and update global rank */
+  MPI_Cart_create(mpi->world_comm, nmodes, mpi->layer_dims, periods, 0,
+      &(mpi->grid_comm));
+  MPI_Comm_rank(mpi->grid_comm, &(mpi->grid_rank));
+
+  /* get 3d coordinates */
+  MPI_Cart_coords(mpi->grid_comm, mpi->grid_rank, nmodes, mpi->grid_coords);
+
+  /* compute ranks relative to tensor mode */
+  for(idx_t m=0; m < nmodes; ++m) {
+    int const layer_id = mpi->grid_coords[m];
+
+    /* now split grid communicator into layers */
+    MPI_Comm_split(mpi->grid_comm, layer_id, 0, &(mpi->layer_comms[m]));
+    MPI_Comm_rank(mpi->layer_comms[m], &(mpi->layer_rank[m]));
+    MPI_Comm_size(mpi->layer_comms[m], &(mpi->layer_size[m]));
+
+    assert(mpi->layer_rank[m] < mpi->world_npes / mpi->layer_dims[m]);
+  }
+}
 
 
 
@@ -239,6 +295,17 @@ splatt_coord * splatt_mpi_rearrange_medium(
     return NULL;
   }
   assert(total_p == comm_info->world_npes);
+
+  /* build cartiesan communicators */
+  p_setup_comms_medium(comm_info);
+
+  /* build histogram to determine boundaries of each mode */
+  for(idx_t m=0; m < coord->nmodes; ++m) {
+    idx_t * slice_hist = tt_get_hist(coord, m);
+    MPI_Allreduce(MPI_IN_PLACE, slice_hist, 1, SPLATT_MPI_IDX, MPI_SUM,
+        comm_info->grid_comm);
+  }
+
 
   return NULL;
 }

@@ -107,10 +107,9 @@ static idx_t p_eps_rb_partition_1d(
  * PUBLIC FUNCTIONS
  *****************************************************************************/
 
-idx_t partition_1d(
+idx_t * partition_1d(
     idx_t * const weights,
     idx_t const nitems,
-    idx_t * const parts,
     idx_t const nparts)
 {
   timer_start(&timers[TIMER_PART]);
@@ -118,12 +117,12 @@ idx_t partition_1d(
 
   nprobes = 0;
 
-  idx_t bottleneck = 0;
+  idx_t * parts = splatt_malloc((nparts + 1) * sizeof(*parts));
   
   /* actual partitioning */
   if(nitems > nparts) {
     /* use recursive bisectioning with 0 tolerance to get exact solution */
-    bottleneck = p_eps_rb_partition_1d(weights, nitems, parts, nparts, 0);
+    idx_t bottleneck = p_eps_rb_partition_1d(weights, nitems, parts, nparts, 0);
     /* apply partitioning that we found */
     bool success = lprobe(weights, nitems, parts, nparts, bottleneck);
     assert(success == true);
@@ -133,7 +132,6 @@ idx_t partition_1d(
   } else {
     for(idx_t p=0; p < nitems; ++p) {
       parts[p] = p;
-      bottleneck = SS_MAX(bottleneck, weights[p]);
     }
     for(idx_t p=nitems; p <= nparts; ++p) {
       parts[p] = nitems;
@@ -141,7 +139,7 @@ idx_t partition_1d(
   }
 
   timer_stop(&timers[TIMER_PART]);
-  return bottleneck;
+  return parts;
 }
 
 
@@ -160,6 +158,7 @@ bool lprobe(
   for(idx_t p=1; p <= nparts; ++p) {
     parts[p] = nitems;
   }
+
 
   idx_t bsum = bottleneck;
   idx_t step = nitems / nparts;

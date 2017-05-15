@@ -781,8 +781,6 @@ idx_t * csf_partition_1d(
     idx_t const tile_id,
     idx_t const nparts)
 {
-  idx_t * parts = splatt_malloc((nparts+1) * sizeof(*parts));
-
   idx_t const nslices = csf->pt[tile_id].nfibs[0];
   idx_t * weights = splatt_malloc(nslices * sizeof(*weights));
 
@@ -791,7 +789,7 @@ idx_t * csf_partition_1d(
     weights[i] = p_csf_count_nnz(csf->pt[tile_id].fptr, csf->nmodes, 0, i);
   }
 
-  partition_1d(weights, nslices, parts, nparts);
+  idx_t * parts = partition_1d(weights, nslices, nparts);
   splatt_free(weights);
 
   return parts;
@@ -802,8 +800,6 @@ idx_t * csf_partition_tiles_1d(
     splatt_csf const * const csf,
     idx_t const nparts)
 {
-  idx_t * parts = splatt_malloc((nparts+1) * sizeof(*parts));
-
   idx_t const nmodes = csf->nmodes;
   idx_t const ntiles = csf->ntiles;
   idx_t * weights = splatt_malloc(ntiles * sizeof(*weights));
@@ -813,7 +809,7 @@ idx_t * csf_partition_tiles_1d(
     weights[i] = csf->pt[i].nfibs[nmodes-1];
   }
 
-  partition_1d(weights, ntiles, parts, nparts);
+  idx_t * parts = partition_1d(weights, ntiles, nparts);
   splatt_free(weights);
 
   return parts;

@@ -179,11 +179,29 @@ CTEST2(mpi_rearrange, mpi_rearrange_medium_fixeddim)
     /* rearrange */
     splatt_coord * med = splatt_mpi_rearrange_medium(mpi_tt, dims, mpi);
 
+    /* comm_info basics */
     ASSERT_EQUAL(mpi_tt->nmodes, mpi->nmodes);
     ASSERT_EQUAL(SPLATT_DECOMP_MEDIUM, mpi->decomp);
     for(idx_t m=0; m < mpi_tt->nmodes; ++m) {
       ASSERT_EQUAL(dims[m], mpi->layer_dims[m]);
+      if(mpi->layer_comms[m] == MPI_COMM_NULL) {
+        ASSERT_FAIL();
+      }
     }
+    if(mpi->grid_comm == MPI_COMM_NULL) {
+      ASSERT_FAIL();
+    }
+    if(mpi->grid_rank >= mpi->world_npes) {
+      ASSERT_FAIL();
+    }
+    for(idx_t m=0; m < mpi->nmodes; ++m) {
+      if(mpi->grid_coords[m] >= mpi->layer_dims[m]) {
+        ASSERT_FAIL();
+      }
+    }
+
+    /* now newly distributed tensor basics */
+    //ASSERT_NOT_NULL(med);
 
     tt_free(med);
     tt_free(mpi_tt);

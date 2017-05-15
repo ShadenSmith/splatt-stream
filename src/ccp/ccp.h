@@ -17,10 +17,21 @@
  *****************************************************************************/
 
 #define partition_1d splatt_partition_1d
-idx_t partition_1d(
+/**
+* @brief Partition a set of items using chains-on-chains partitioning (CCP).
+*        Each item is weighted based on cost (i.e., work), and this routine
+*        finds an optimal partitioning.
+*
+* @param weights The cost of each item.
+* @param nitems The number of items.
+* @param nparts The number of partitions to compute.
+*
+* @return An array of length (nparts+1) which marks the start/end of each
+*         partition.
+*/
+idx_t * partition_1d(
     idx_t * const weights,
     idx_t const nitems,
-    idx_t * const parts,
     idx_t const nparts);
 
 
