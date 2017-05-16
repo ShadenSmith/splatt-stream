@@ -333,10 +333,10 @@ splatt_coord * splatt_mpi_distribute_cpd(
 
   /* rearrange for a CPD */
   splatt_coord * tt_cpd = splatt_mpi_rearrange_cpd(coord, cpd_opts, comm_info);
-
-  /* clean up */
   assert(tt_cpd != coord);
   tt_free(coord);
+
+  /* XXX: now compute distribution of matrices for CPD */
 
   return tt_cpd;
 }
