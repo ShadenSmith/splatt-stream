@@ -157,7 +157,14 @@ CTEST2(mpi_rearrange, mpi_rearrange_medium_best)
     ASSERT_EQUAL(mpi->global_nnz, total_nnz);
 
     /* now go over all nnz and ensure indices are in proper range */
-
+    for(idx_t m=0; m < med->nmodes; ++m) {
+      idx_t const layer_size =
+        mpi->layer_ptrs[m][mpi->grid_coords[m]+1]
+        - mpi->layer_ptrs[m][mpi->grid_coords[m]];
+      for(idx_t x=0; x < med->nnz; ++x) {
+        ASSERT_TRUE(med->ind[m][x] < layer_size);
+      }
+    }
 
     tt_free(med);
     tt_free(mpi_tt);
