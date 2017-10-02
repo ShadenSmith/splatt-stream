@@ -11,6 +11,8 @@
 #include "cmd_cpd_constraint.h"
 
 
+#include "../cpd/stream.h"
+
 
 
 
@@ -219,6 +221,8 @@ enum
   LONG_TILE,
   LONG_TOL,
 
+  LONG_STREAM,
+
   LONG_CSF,
 
   /* constraints and regularizations*/
@@ -247,6 +251,9 @@ static struct argp_option cpd_options[] = {
 
   {"seed", LONG_SEED, "SEED", 0, "random seed (default: system time)"},
   {"iters", 'i', "#ITS", 0, "maximum number of outer iterations (default: 200)"},
+
+  {"stream", LONG_STREAM, "MODE", 0, "stream one mode of the tensor (default: none)"},
+  {"forget", 'f', "WEIGHT", 0, "decay factor for streamed mode [0,1] (default: 1.)"},
 
   {"rank", 'r', "RANK", 0, "rank of factorization (default: 10)"},
   {"stem", 's', "PATH", 0, "file stem for output files (default: ./)"},
@@ -308,6 +315,9 @@ typedef struct
   double * opts;   /** splatt_cpd options */
   idx_t nfactors;
 
+  idx_t stream_mode;
+  double forget;
+
   splatt_global_opts * global_opts;
   splatt_cpd_opts    * cpd_opts;
 } cpd_cmd_args;
@@ -330,6 +340,9 @@ static void default_cpd_opts(
   args->stem = NULL;
   args->write     = true;
   args->nfactors  = 10;
+
+  args->stream_mode = SPLATT_MAX_NMODES;
+  args->forget = 1.;
 }
 
 
@@ -407,6 +420,13 @@ static error_t parse_cpd_opt(
     srand(args->global_opts->random_seed);
     break;
 
+  case LONG_STREAM:
+    args->stream_mode = strtoull(arg, &arg, 10) - 1;
+    break;
+  case 'f':
+    args->forget = atof(arg);
+    break;
+
   /* ADMM tuning */
   case LONG_INNER_ITS:
     args->cpd_opts->max_inner_iterations = strtoull(arg, &arg, 10);
@@ -477,6 +497,20 @@ int splatt_cpd_cmd(
   if(comm->world_rank == 0) {
     print_header();
   }
+
+  /* XXX hack */
+  if(args.stream_mode != SPLATT_MAX_NMODES) {
+    splatt_cpd_stream(args.ifname, args.nfactors,
+        args.stream_mode, args.forget,
+        args.cpd_opts, args.global_opts);
+
+    splatt_free_opts(args.opts);
+    splatt_free_cpd_opts(args.cpd_opts);
+    splatt_free_global_opts(args.global_opts);
+    splatt_free_comm_info(comm);
+    return EXIT_SUCCESS;
+  }
+    
 
   /* Load tensor */
 #ifdef SPLATT_USE_MPI

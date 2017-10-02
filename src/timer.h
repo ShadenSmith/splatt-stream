@@ -81,8 +81,8 @@ typedef enum
 
 
 /* globals */
-int timer_lvl;
-sp_timer_t timers[TIMER_NTIMERS];
+extern int timer_lvl;
+extern sp_timer_t timers[TIMER_NTIMERS];
 
 
 /******************************************************************************

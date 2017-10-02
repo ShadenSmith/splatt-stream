@@ -44,12 +44,14 @@ add_subdirectory(include)
 # Source code files to compile for library
 file(GLOB SPLATT_SOURCES
       src/*.c
-      src/*.cc
+      rc/*.cc
       src/ccp/*.c
       src/cpd/*.c
       src/cpd/*.cc
       src/cpd/constraints/*.c
       src/cpd/constraints/*.cc
+      src/cpd/stream/*.c
+      src/cpd/stream/*.cc
       ${MPI_SOURCES})
 
 # Generate splatt library
