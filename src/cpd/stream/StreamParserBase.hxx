@@ -5,6 +5,7 @@
 
 extern "C" {
 #include "../../base.h"
+#include "../../sptensor.h"
 }
 
 class StreamParserBase
@@ -15,7 +16,7 @@ public:
   );
   ~StreamParserBase();
 
-  virtual void next_batch() = 0;
+  virtual sptensor_t * next_batch() = 0;
 
 protected:
   idx_t _stream_mode;

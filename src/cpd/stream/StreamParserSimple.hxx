@@ -18,11 +18,13 @@ public:
 
   ~StreamParserSimple();
 
-  void next_batch();
+  sptensor_t * next_batch();
 
 private:
   sptensor_t * _tensor;
 
+  idx_t _batch_num;
+  idx_t _nnz_ptr;
 };
 
 #endif
