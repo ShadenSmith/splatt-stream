@@ -35,7 +35,6 @@ static void p_print_stream_stats(
   printf("TOL=%0.1e ", cpd_options->tolerance);
   printf("SEED=%d ", global_options->random_seed);
   printf("THREADS=%d\n", global_options->num_threads);
-
 }
 
 
@@ -58,11 +57,13 @@ splatt_error_type splatt_cpd_stream(
 
   StreamParserSimple parser(filename, stream_mode);
 
+  /* Stream */
   idx_t it = 0;
   sptensor_t * batch = parser.next_batch();
   while(batch != NULL) {
     printf("batch %5lu: %lu nnz\n", it+1, batch->nnz);
 
+    /* prepare for next batch */
     tt_free(batch);
     batch = parser.next_batch();
     ++it;

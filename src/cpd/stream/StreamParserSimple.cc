@@ -55,6 +55,7 @@ sptensor_t * StreamParserSimple::next_batch()
   /* end of stream */
   assert(nnz > 0);
 
+  /* copy into new tensor */
   sptensor_t * ret = tt_alloc(nnz, _tensor->nmodes);
   for(idx_t m=0; m < _tensor->nmodes; ++m) {
     par_memcpy(ret->ind[m], &(_tensor->ind[m][start_nnz]),
@@ -62,6 +63,7 @@ sptensor_t * StreamParserSimple::next_batch()
   }
   par_memcpy(ret->vals, &(_tensor->vals[start_nnz]), nnz * sizeof(*(ret->vals)));
 
+  /* update state for next batch */
   _nnz_ptr = end_nnz;
   ++_batch_num;
 
