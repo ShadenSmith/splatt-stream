@@ -12,7 +12,7 @@ public:
   StreamMatrix(idx_t rank);
   ~StreamMatrix();
 
-  void reserve(idx_t nrows);
+  void grow(idx_t nrows);
 
   inline matrix_t * mat() { return _mat; };
   inline val_t * vals() { return _mat->vals; };

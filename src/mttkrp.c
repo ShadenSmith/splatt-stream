@@ -1708,7 +1708,11 @@ void mttkrp_stream(
   idx_t const nfactors = M->J;
 
   val_t * const outmat = M->vals;
-  memset(outmat, 0, I * nfactors * sizeof(*outmat));
+  /* clear output */
+  #pragma omp parallel for schedule(static)
+  for(idx_t x=0; x < I * nfactors; ++x) {
+    outmat[x] = 0.;
+  }
 
   idx_t const nmodes = tt->nmodes;
 
@@ -1735,6 +1739,12 @@ void mttkrp_stream(
         if(m == mode) {
           continue;
         }
+#if 0
+        if(tt->ind[m][n] >= mats[m]->I) {
+          printf("%lu >= %lu\n", tt->ind[m][n], mats[m]->I);
+        }
+#endif
+        assert(tt->ind[m][n] < mats[m]->I);
         val_t const * const restrict inrow = mvals[m] + \
             (tt->ind[m][n] * nfactors);
         for(idx_t f=0; f < nfactors; ++f) {

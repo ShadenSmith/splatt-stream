@@ -59,13 +59,17 @@ sptensor_t * ParserSimple::next_batch()
   sptensor_t * ret = tt_alloc(nnz, _tensor->nmodes);
   par_memcpy(ret->vals, &(_tensor->vals[start_nnz]), nnz * sizeof(*(ret->vals)));
 
+  /* streaming mode is just 0s */
   #pragma omp parallel for schedule(static)
   for(idx_t x=0; x < nnz; ++x) {
     ret->ind[_stream_mode][x] = 0;
   }
+
+  /* non-streaming modes use _ind_maps */
   #pragma omp parallel for schedule(static, 1)
   for(idx_t m=0; m < _tensor->nmodes; ++m) {
     if(m == _stream_mode) {
+      ret->dims[_stream_mode] = 1;
       continue;
     }
 
@@ -79,6 +83,8 @@ sptensor_t * ParserSimple::next_batch()
       /* map original index to increasing one */
       ret->ind[m][x] = _ind_maps[m][orig_ind];
     }
+
+    ret->dims[m] = _ind_maps[m].size();
   }
 
   /* update state for next batch */

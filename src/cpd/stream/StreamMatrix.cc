@@ -24,20 +24,38 @@ StreamMatrix::~StreamMatrix()
 }
 
 
-void StreamMatrix::reserve(
+void StreamMatrix::grow(
     idx_t new_rows)
 {
-  idx_t const old_capacity = _row_capacity;
-
-  /* double until we can fit all of the requested rows */
-  while(new_rows > _row_capacity) {
-    _row_capacity *= 2;
+  if(new_rows < _nrows) {
+    return;
   }
 
-  if(old_capacity < _row_capacity) {
-    matrix_t * newmat = mat_alloc(new_rows, _ncols);
+  /* grow allocation */
+  if(new_rows >= _row_capacity) {
+    /* double until we can fit all of the requested rows */
+    while(new_rows > _row_capacity) {
+      _row_capacity *= 2;
+    }
+
+    matrix_t * newmat = mat_alloc(_row_capacity, _ncols);
     par_memcpy(newmat->vals, _mat->vals, _nrows * _ncols * sizeof(*newmat->vals));
     mat_free(_mat);
     _mat = newmat;
   }
+
+  /* fill in new rows with initialized values */
+#if 1
+  fill_rand(&(_mat->vals[_nrows * _ncols]), (new_rows - _nrows) * _ncols);
+#else
+  /* zero values? */
+  for(idx_t x=_nrows * _ncols; x < new_rows * _ncols; ++x) {
+    _mat->vals[x] = 0.;
+  }
+#endif
+
+  /* store new number of rows */
+  _nrows = new_rows;
+  //_mat->I = _nrows;
 }
+
