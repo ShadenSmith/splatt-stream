@@ -8,7 +8,8 @@ extern "C" {
 #include "../stream.h"
 }
 
-#include "StreamParserSimple.hxx"
+#include "ParserSimple.hxx"
+#include "StreamCPD.hxx"
 
 
 
@@ -55,19 +56,10 @@ splatt_error_type splatt_cpd_stream(
   p_print_stream_stats(filename, rank, stream_mode, forget,
       cpd_options, global_options);
 
-  StreamParserSimple parser(filename, stream_mode);
+  ParserSimple parser(filename, stream_mode);
 
-  /* Stream */
-  idx_t it = 0;
-  sptensor_t * batch = parser.next_batch();
-  while(batch != NULL) {
-    printf("batch %5lu: %lu nnz\n", it+1, batch->nnz);
-
-    /* prepare for next batch */
-    tt_free(batch);
-    batch = parser.next_batch();
-    ++it;
-  }
+  StreamCPD cpd(&parser);
+  cpd.compute(rank, forget, cpd_options, global_options);
 
   return SPLATT_SUCCESS;
 }

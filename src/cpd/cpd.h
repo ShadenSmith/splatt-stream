@@ -14,6 +14,7 @@
  * INCLUDES
  *****************************************************************************/
 #include "../matrix.h"
+#include "../sptensor.h"
 #include "../thd_info.h"
 
 
@@ -182,6 +183,13 @@ void cpd_post_process(
 */
 cpd_ws * cpd_alloc_ws(
     splatt_csf const * const tensor,
+    idx_t rank,
+    splatt_cpd_opts const * const cpd_opts,
+    splatt_global_opts const * const global_opts);
+
+
+cpd_ws * cpd_alloc_ws_spten(
+    sptensor_t const * const tensor,
     idx_t rank,
     splatt_cpd_opts const * const cpd_opts,
     splatt_global_opts const * const global_opts);

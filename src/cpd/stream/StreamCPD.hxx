@@ -6,17 +6,26 @@ extern "C" {
 #include "../../sptensor.h"
 }
 
+
+#include "ParserBase.hxx"
+
 class StreamCPD
 {
 public:
   StreamCPD(
-      StreamParserBase * source
+      ParserBase * source
   );
-
   ~StreamCPD();
 
+
+  void compute(
+      splatt_idx_t const rank,
+      double const forget,
+      splatt_cpd_opts const * const cpd_opts,
+      splatt_global_opts const * const global_opts);
+
 private:
-  StreamParserBase  * _source;
+  ParserBase  * _source;
 };
 
 #endif
