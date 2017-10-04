@@ -109,12 +109,12 @@ void mat_cholesky(
   assert(A->I == A->J);
 
   /* Cholesky factorization */
-  int N = (int) A->I;
+  splatt_blas_int N = A->I;
   val_t * const restrict neqs = A->vals;
   char uplo = 'L';
-  int order = N;
-  int lda = N;
-  int info;
+  splatt_blas_int order = N;
+  splatt_blas_int lda = N;
+  splatt_blas_int info;
   LAPACK_DPOTRF(&uplo, &order, neqs, &lda, &info);
   if(info) {
     fprintf(stderr, "SPLATT: DPOTRF returned %d\n", info);
@@ -132,14 +132,14 @@ void mat_solve_cholesky(
   if(!splatt_omp_in_parallel()) {
     timer_start(&timers[TIMER_BACKSOLVE]);
   }
-  int N = (int) cholesky->I;
+  splatt_blas_int N = cholesky->I;
 
   /* Solve against rhs */
   char tri = 'L';
-  int lda = N;
-  int info;
-  int nrhs = (int) rhs->I;
-  int ldb = N;
+  splatt_blas_int lda = N;
+  splatt_blas_int info;
+  splatt_blas_int nrhs = rhs->I;
+  splatt_blas_int ldb = N;
   LAPACK_DPOTRS(&tri, &N, &nrhs, cholesky->vals, &lda, rhs->vals, &ldb, &info);
   if(info) {
     fprintf(stderr, "SPLATT: DPOTRS returned %d\n", info);

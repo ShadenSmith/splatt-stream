@@ -78,7 +78,8 @@ sptensor_t * ParserSimple::next_batch()
 
       /* insert if not found */
       if(_ind_maps[m].find(orig_ind) == _ind_maps[m].end()) {
-        _ind_maps[m][orig_ind] = _ind_maps[m].size();
+        size_t const size = _ind_maps[m].size();
+        _ind_maps[m][orig_ind] = size;
       }
       /* map original index to increasing one */
       ret->ind[m][x] = _ind_maps[m][orig_ind];

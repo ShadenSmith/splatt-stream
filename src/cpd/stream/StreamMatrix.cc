@@ -44,18 +44,40 @@ void StreamMatrix::grow(
     _mat = newmat;
   }
 
-  /* fill in new rows with initialized values */
-#if 1
-  fill_rand(&(_mat->vals[_nrows * _ncols]), (new_rows - _nrows) * _ncols);
-#else
-  /* zero values? */
+  _mat->I = new_rows;
+}
+
+
+void StreamMatrix::grow_zero(
+    idx_t new_rows)
+{
+  if(new_rows < _nrows) {
+    return;
+  }
+  grow(new_rows);
+
+  /* zero valuex */
+  #pragma omp parallel for schedule(static)
   for(idx_t x=_nrows * _ncols; x < new_rows * _ncols; ++x) {
     _mat->vals[x] = 0.;
   }
-#endif
 
   /* store new number of rows */
   _nrows = new_rows;
-  //_mat->I = _nrows;
+}
+
+
+void StreamMatrix::grow_rand(
+    idx_t new_rows)
+{
+  if(new_rows < _nrows) {
+    return;
+  }
+  grow(new_rows);
+
+  fill_rand(&(_mat->vals[_nrows * _ncols]), (new_rows - _nrows) * _ncols);
+
+  /* store new number of rows */
+  _nrows = new_rows;
 }
 
