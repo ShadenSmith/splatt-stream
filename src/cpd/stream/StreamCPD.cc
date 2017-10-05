@@ -185,6 +185,8 @@ splatt_kruskal *  StreamCPD::compute(
 
   StreamMatrix mttkrp_buf(rank);
 
+  printf("\n");
+
   /*
    * Stream
    */
@@ -353,10 +355,9 @@ splatt_kruskal *  StreamCPD::compute(
   }
 
   /* compute quality assessment */
-  val_t const Xnorm = tt_normsq(_source->full_stream());
-  val_t const mynorm = kruskal_norm(cpd);
+  printf("\n");
+  printf("final-fit: %0.5f\n", 1 - cpd_error(_source->full_stream(), cpd));
 
-  printf("Xnorm: %e mynorm: %e\n", Xnorm, mynorm);
 
   mat_free(gram);
   mat_free(new_gram);

@@ -170,6 +170,10 @@ void cpd_post_process(
     splatt_global_opts const * const global_opts);
 
 
+double cpd_error(
+    sptensor_t const * const tensor,
+    splatt_kruskal const * const factored);
+
 
 
 #define cpd_alloc_ws splatt_cpd_alloc_ws

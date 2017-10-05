@@ -18,6 +18,7 @@
 #include "admm.h"
 
 #include "../csf.h"
+#include "../sptensor.h"
 #include "../mttkrp.h"
 #include "../timer.h"
 #include "../util.h"
@@ -119,9 +120,11 @@ splatt_kruskal * splatt_alloc_cpd(
   splatt_kruskal * cpd = splatt_malloc(sizeof(*cpd));
 
   cpd->nmodes = csf->nmodes;
+  cpd->rank = rank;
 
   cpd->lambda = splatt_malloc(rank * sizeof(*cpd->lambda));
   for(idx_t m=0; m < csf->nmodes; ++m) {
+    cpd->dims[m] = csf->dims[m];
     cpd->factors[m] = splatt_malloc(csf->dims[m] * rank *
         sizeof(**cpd->factors));
 
@@ -530,6 +533,84 @@ val_t kruskal_norm(
 
   return fabs(norm);
 }
+
+
+double cpd_error(
+    sptensor_t const * const tensor,
+    splatt_kruskal const * const factored)
+{
+  timer_start(&timers[TIMER_FIT]);
+
+  /* find the smallest mode for MTTKRP */
+  idx_t const smallest_mode = argmin_elem(tensor->dims, tensor->nmodes);
+  idx_t const nrows = tensor->dims[smallest_mode];
+  idx_t const rank = factored->rank;
+
+  /*
+   * MTTKRP
+   */
+  matrix_t * mat_ptrs[MAX_NMODES+1];
+  for(idx_t m=0; m < factored->nmodes; ++m) {
+    mat_ptrs[m] = mat_mkptr(factored->factors[m], factored->dims[m], rank, 1);
+  }
+  mat_ptrs[MAX_NMODES] = mat_alloc(nrows, rank);
+  mttkrp_stream(tensor, mat_ptrs, smallest_mode);
+
+  
+  val_t const * const smallmat = factored->factors[smallest_mode];
+  val_t const * const mttkrp  = mat_ptrs[MAX_NMODES]->vals;
+
+  /*
+   * inner product between tensor and factored
+   */
+  double inner = 0;
+  #pragma omp parallel reduction(+:inner)
+  {
+    int const tid = splatt_omp_get_thread_num();
+    val_t * const restrict accumF = splatt_malloc(rank * sizeof(*accumF));
+
+    for(idx_t r=0; r < rank; ++r) {
+      accumF[r] = 0.;
+    }
+
+    /* Hadamard product with newest factor and previous MTTKRP */
+    #pragma omp for schedule(static)
+    for(idx_t i=0; i < nrows; ++i) {
+      val_t const * const restrict smallmat_row = smallmat + (i*rank);
+      val_t const * const restrict mttkrp_row = mttkrp + (i*rank);
+      for(idx_t r=0; r < rank; ++r) {
+        accumF[r] += smallmat_row[r] * mttkrp_row[r];
+      }
+    }
+
+    /* accumulate everything into 'inner' */
+    for(idx_t r=0; r < rank; ++r) {
+      inner += accumF[r] * factored->lambda[r];
+    }
+
+    splatt_free(accumF);
+  } /* end omp parallel -- reduce myinner */
+
+
+  double const Xnormsq = tt_normsq(tensor);
+  double const Znormsq = kruskal_norm(factored);
+  double const residual = sqrt(Xnormsq + Znormsq - (2 * inner));
+  double const err = residual / sqrt(Xnormsq);
+
+  printf("\n");
+  printf("Xnormsq: %e Znormsq: %e inner: %e\n", Xnormsq, Znormsq, inner);
+
+  /* cleanup */
+  mat_free(mat_ptrs[MAX_NMODES]);
+  for(idx_t m=0; m < factored->nmodes; ++m) {
+    /* just the ptr */
+    splatt_free(mat_ptrs[m]);
+  }
+
+  timer_stop(&timers[TIMER_FIT]);
+  return err;
+}
+
 
 
 
