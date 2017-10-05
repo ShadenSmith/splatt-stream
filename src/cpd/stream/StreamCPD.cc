@@ -222,6 +222,7 @@ splatt_kruskal *  StreamCPD::compute(
       mttkrp_stream(batch, mat_ptrs, stream_mode);
       timer_stop(&timers[TIMER_MTTKRP]);
       mat_form_gram(aTa, gram, num_modes, stream_mode);
+
       mat_cholesky(gram);
       mat_solve_cholesky(gram, mat_ptrs[stream_mode]);
       mat_aTa(mat_ptrs[stream_mode], new_gram); /* this slice's Gram */
@@ -251,6 +252,11 @@ splatt_kruskal *  StreamCPD::compute(
 
         /* Gram setup */
         p_setup_gram(aTa, new_gram, gram, num_modes, stream_mode, m);
+#if 0
+        /* regularize */
+        val_t const norm = mat_norm(gram);
+        mat_add_diag(gram, norm * norm / rank);
+#endif
         mat_cholesky(gram);
         mat_solve_cholesky(gram, mttkrp_buf.mat());
 
@@ -298,9 +304,11 @@ splatt_kruskal *  StreamCPD::compute(
      * Batch stats
      */
     timer_stop(&batch_time);
+#if 1
     printf("batch %5lu: %lu nnz (%0.3fs) (%0.3e NNZ/s)\n",
         it+1, batch->nnz, batch_time.seconds,
         (double) batch->nnz / batch_time.seconds);
+#endif
 
 
     /* prepare for next batch */
@@ -311,10 +319,12 @@ splatt_kruskal *  StreamCPD::compute(
   } /* while batch != NULL */
   timer_stop(&timers[TIMER_CPD]);
 
+
   /* store output */
   splatt_kruskal * cpd = (splatt_kruskal *) splatt_malloc(sizeof(*cpd));
   cpd->nmodes = num_modes;
   cpd->lambda = (val_t *) splatt_malloc(rank * sizeof(*cpd->lambda));
+  cpd->rank = rank;
   for(idx_t r=0; r < rank; ++r) {
     cpd->lambda[r] = 1.;
   }
@@ -341,6 +351,12 @@ splatt_kruskal *  StreamCPD::compute(
       }
     }
   }
+
+  /* compute quality assessment */
+  val_t const Xnorm = tt_normsq(_source->full_stream());
+  val_t const mynorm = kruskal_norm(cpd);
+
+  printf("Xnorm: %e mynorm: %e\n", Xnorm, mynorm);
 
   mat_free(gram);
   mat_free(new_gram);

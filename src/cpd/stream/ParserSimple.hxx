@@ -26,6 +26,8 @@ public:
   /* invert mapping to get original indices */
   inline idx_t lookup_ind(idx_t mode, idx_t ind) { return _ind_maps_inv[mode][ind]; }
 
+  sptensor_t * full_stream();
+
 private:
   sptensor_t * _tensor;
 

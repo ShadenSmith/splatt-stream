@@ -485,3 +485,51 @@ val_t cpd_innerprod(
   return myinner;
 }
 
+val_t kruskal_norm(
+    splatt_kruskal const * const kruskal)
+{
+  idx_t const rank = kruskal->rank;
+  val_t * const scratch = (val_t *) splatt_malloc(rank * rank * sizeof(*scratch));
+
+  matrix_t * ata = mat_zero(rank, rank);
+
+  /* initialize scratch space */
+  for(idx_t i=0; i < rank; ++i) {
+    for(idx_t j=i; j < rank; ++j) {
+      scratch[j + (i*rank)] = 1.;
+    }
+  }
+
+  /* scratch = hada(aTa) */
+  for(idx_t m=0; m < kruskal->nmodes; ++m) {
+    matrix_t matptr;
+    mat_fillptr(&matptr, kruskal->factors[m], kruskal->dims[m], rank, 1);
+
+    mat_aTa(&matptr, ata);
+
+    val_t const * const restrict atavals = ata->vals;
+    for(idx_t i=0; i < rank; ++i) {
+      for(idx_t j=i; j < rank; ++j) {
+        scratch[j + (i*rank)] *= atavals[j + (i*rank)];
+      }
+    }
+  }
+
+  /* now compute weights^T * aTa[MAX_NMODES] * weights */
+  val_t norm = 0;
+  val_t const * const column_weights = kruskal->lambda;
+  for(idx_t i=0; i < rank; ++i) {
+    norm += scratch[i+(i*rank)] * column_weights[i] * column_weights[i];
+    for(idx_t j=i+1; j < rank; ++j) {
+      norm += scratch[j+(i*rank)] * column_weights[i] * column_weights[j] * 2;
+    }
+  }
+
+  splatt_free(scratch);
+  mat_free(ata);
+
+  return fabs(norm);
+}
+
+
+

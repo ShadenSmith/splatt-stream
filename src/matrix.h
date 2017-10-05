@@ -151,6 +151,9 @@ matrix_t * mat_mkptr(
 void mat_cholesky(
     matrix_t const * const A);
 
+val_t mat_norm(
+    matrix_t const * const A);
+
 
 void mat_solve_cholesky(
     matrix_t * const cholesky,

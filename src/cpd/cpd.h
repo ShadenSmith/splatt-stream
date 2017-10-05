@@ -102,6 +102,9 @@ val_t cpd_norm(
     val_t const * const restrict column_weights);
 
 
+val_t kruskal_norm(
+    splatt_kruskal const * const kruskal);
+
 
 #define cpd_innerprod splatt_cpd_innerprod
 /**

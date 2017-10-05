@@ -41,7 +41,6 @@ static void p_print_stream_stats(
 
 
 
-
 /******************************************************************************
  * API FUNCTIONS
  *****************************************************************************/
@@ -63,12 +62,6 @@ splatt_error_type splatt_cpd_stream(
   splatt_kruskal * factored = cpd.compute(rank, forget, cpd_options, global_options);
 
   /* write output */
-  char * lambda_name = (char *) splatt_malloc(512 * sizeof(*lambda_name));
-  sprintf(lambda_name, "lambda.mat");
-  vec_write(factored->lambda, rank, lambda_name);
-  splatt_free(lambda_name);
-
-
   for(idx_t m=0; m < factored->nmodes; ++m) {
     char * matfname = (char *) splatt_malloc(512 * sizeof(*matfname));
     sprintf(matfname, "mode%" SPLATT_PF_IDX ".mat", m+1);

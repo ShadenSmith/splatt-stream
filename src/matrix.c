@@ -509,3 +509,14 @@ void spmat_free(
   free(mat);
 }
 
+val_t mat_norm(
+    matrix_t const * const A)
+{
+  val_t norm = 0.;
+  val_t const * const restrict vals = A->vals;
+  #pragma omp parallel for schedule(static) reduction(+:norm)
+  for(idx_t x=0; x < A->I * A->J; ++x) {
+    norm += vals[x] * vals[x];
+  }
+  return sqrt(norm);
+}

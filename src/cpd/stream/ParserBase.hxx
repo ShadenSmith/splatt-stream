@@ -28,6 +28,8 @@ public:
 
   virtual idx_t lookup_ind(idx_t mode, idx_t ind) { return ind; }
 
+  virtual sptensor_t * full_stream() { return NULL; }
+
 
 protected:
   idx_t _stream_mode;

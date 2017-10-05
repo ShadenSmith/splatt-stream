@@ -121,3 +121,10 @@ idx_t ParserSimple::mode_length(
   }
 }
 
+
+sptensor_t * ParserSimple::full_stream()
+{
+  return _tensor;
+}
+
+
