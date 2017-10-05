@@ -385,65 +385,6 @@ cpd_ws * cpd_alloc_ws(
 }
 
 
-
-/*
- * XXX HACK FOR STREAMING
- */
-cpd_ws * cpd_alloc_ws_spten(
-    sptensor_t const * const tensor,
-    idx_t rank,
-    splatt_cpd_opts const * const cpd_opts,
-    splatt_global_opts const * const global_opts)
-{
-  idx_t const nmodes = tensor->nmodes;
-
-  cpd_ws * ws = splatt_malloc(sizeof(*ws));
-
-  ws->nmodes = nmodes;
-  for(idx_t m=0; m < nmodes; ++m) {
-    ws->aTa[m] = mat_alloc(rank, rank);
-  }
-  ws->aTa_buf = mat_alloc(rank, rank);
-  ws->gram = mat_alloc(rank, rank);
-
-  ws->nthreads = global_opts->num_threads;
-  ws->thds =  thd_init(ws->nthreads, 3,
-    (rank * rank * sizeof(val_t)) + 64,
-    0,
-    (nmodes * rank * sizeof(val_t)) + 64);
-
-  /* MTTKRP space */
-  idx_t const maxdim = tensor->dims[argmax_elem(tensor->dims, nmodes)];
-  ws->mttkrp_buf = mat_alloc(maxdim, rank);
-
-  /* Setup structures needed for constraints. */
-  ws->unconstrained = true;
-  for(idx_t m=0; m < nmodes; ++m) {
-    /* allocate duals if we need to perform ADMM */
-    if(cpd_opts->constraints[m]->solve_type != SPLATT_CON_CLOSEDFORM) {
-      ws->duals[m] = mat_zero(tensor->dims[m], rank);
-    } else {
-      ws->duals[m] = NULL;
-    }
-
-    if(strcmp(cpd_opts->constraints[m]->description, "UNCONSTRAINED") != 0) {
-      ws->unconstrained = false;
-    }
-  }
-
-  if(ws->unconstrained) {
-    ws->auxil    = NULL;
-    ws->mat_init = NULL;
-  } else {
-    ws->auxil    = mat_alloc(maxdim, rank);
-    ws->mat_init = mat_alloc(maxdim, rank);
-  }
-
-  return ws;
-}
-
-
-
 void cpd_free_ws(
     cpd_ws * const ws)
 {

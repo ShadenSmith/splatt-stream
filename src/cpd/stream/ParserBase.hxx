@@ -26,6 +26,8 @@ public:
 
   virtual idx_t num_modes() = 0;
 
+  virtual idx_t lookup_ind(idx_t mode, idx_t ind) { return ind; }
+
 
 protected:
   idx_t _stream_mode;

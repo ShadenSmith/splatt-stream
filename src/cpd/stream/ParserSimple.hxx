@@ -23,11 +23,15 @@ public:
   idx_t mode_length(idx_t which_mode);
   idx_t num_modes();
 
+  /* invert mapping to get original indices */
+  inline idx_t lookup_ind(idx_t mode, idx_t ind) { return _ind_maps_inv[mode][ind]; }
+
 private:
   sptensor_t * _tensor;
 
   /* mapping of original indices to seen ones */
   std::unordered_map<idx_t, idx_t> _ind_maps[SPLATT_MAX_NMODES];
+  std::unordered_map<idx_t, idx_t> _ind_maps_inv[SPLATT_MAX_NMODES];
 
   /* batch state */
   idx_t _batch_num;

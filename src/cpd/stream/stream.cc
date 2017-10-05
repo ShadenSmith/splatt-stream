@@ -6,6 +6,7 @@
  *****************************************************************************/
 extern "C" {
 #include "../stream.h"
+#include "../../io.h"
 }
 
 #include "ParserSimple.hxx"
@@ -59,7 +60,24 @@ splatt_error_type splatt_cpd_stream(
   ParserSimple parser(filename, stream_mode);
 
   StreamCPD cpd(&parser);
-  cpd.compute(rank, forget, cpd_options, global_options);
+  splatt_kruskal * factored = cpd.compute(rank, forget, cpd_options, global_options);
+
+  /* write output */
+  char * lambda_name = (char *) splatt_malloc(512 * sizeof(*lambda_name));
+  sprintf(lambda_name, "lambda.mat");
+  vec_write(factored->lambda, rank, lambda_name);
+  splatt_free(lambda_name);
+
+
+  for(idx_t m=0; m < factored->nmodes; ++m) {
+    char * matfname = (char *) splatt_malloc(512 * sizeof(*matfname));
+    sprintf(matfname, "mode%" SPLATT_PF_IDX ".mat", m+1);
+
+    matrix_t tmpmat;
+    mat_fillptr(&tmpmat, factored->factors[m], factored->dims[m], rank, 1);
+    mat_write(&tmpmat, matfname);
+    splatt_free(matfname);
+  }
 
   return SPLATT_SUCCESS;
 }

@@ -4,6 +4,7 @@
 extern "C" {
 #include "../../base.h"
 #include "../../sptensor.h"
+#include "../cpd.h"
 }
 
 
@@ -18,7 +19,7 @@ public:
   ~StreamCPD();
 
 
-  void compute(
+  splatt_kruskal *  compute(
       splatt_idx_t const rank,
       double const forget,
       splatt_cpd_opts const * const cpd_opts,

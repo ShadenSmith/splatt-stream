@@ -18,6 +18,13 @@ ParserSimple::ParserSimple(
 {
   _tensor = tt_read_file(filename.c_str());
 
+  if(_stream_mode >= _tensor->nmodes) {
+    fprintf(stderr, "ERROR: streaming mode %" SPLATT_PF_IDX
+                    " is larger than # modes.\n",
+        _stream_mode + 1);
+    exit(1);
+  }
+
   /* sort tensor by streamed mode */
   tt_sort(_tensor, _stream_mode, NULL);
 }
@@ -80,6 +87,7 @@ sptensor_t * ParserSimple::next_batch()
       if(_ind_maps[m].find(orig_ind) == _ind_maps[m].end()) {
         size_t const size = _ind_maps[m].size();
         _ind_maps[m][orig_ind] = size;
+        _ind_maps_inv[m][size] = orig_ind;
       }
       /* map original index to increasing one */
       ret->ind[m][x] = _ind_maps[m][orig_ind];
