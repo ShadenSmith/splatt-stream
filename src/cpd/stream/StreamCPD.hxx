@@ -9,6 +9,7 @@ extern "C" {
 
 
 #include "ParserBase.hxx"
+#include "StreamMatrix.hxx"
 
 class StreamCPD
 {
@@ -26,7 +27,13 @@ public:
       splatt_global_opts const * const global_opts);
 
 private:
+  splatt_kruskal * get_kruskal(StreamMatrix * * mats);
+
   ParserBase  * _source;
+
+  idx_t _nmodes;
+  idx_t _rank;
+  idx_t _stream_mode;
 };
 
 #endif

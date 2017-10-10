@@ -11,6 +11,46 @@ extern "C" {
 #include <cblas.h>
 }
 
+
+splatt_kruskal * StreamCPD::get_kruskal(
+    StreamMatrix  * * mats)
+{
+  /* store output */
+  splatt_kruskal * cpd = (splatt_kruskal *) splatt_malloc(sizeof(*cpd));
+  cpd->nmodes = _nmodes;
+  cpd->lambda = (val_t *) splatt_malloc(_rank * sizeof(*cpd->lambda));
+  cpd->rank = _rank;
+  for(idx_t r=0; r < _rank; ++r) {
+    cpd->lambda[r] = 1.;
+  }
+  for(idx_t m=0; m < _nmodes; ++m) {
+    if(m == _stream_mode) {
+      idx_t const nrows = mats[_stream_mode]->num_rows();
+      cpd->dims[m] = nrows;
+      cpd->factors[m] = (val_t *)
+          splatt_malloc(nrows * _rank * sizeof(val_t));
+      par_memcpy(cpd->factors[m], mats[_stream_mode]->vals(), nrows * _rank * sizeof(val_t));
+
+    } else {
+      idx_t const nrows = mats[m]->num_rows();
+      cpd->dims[m] = nrows;
+
+      cpd->factors[m] = (val_t *) splatt_malloc(nrows * _rank * sizeof(val_t));
+      /* permute rows */
+      #pragma omp parallel for schedule(static)
+      for(idx_t i=0; i < nrows; ++i) {
+        idx_t const new_id = _source->lookup_ind(m, i);
+        memcpy(&(cpd->factors[m][i*_rank]), 
+               &(mats[m]->vals()[new_id * _rank]),
+               _rank * sizeof(val_t));
+      }
+    }
+  }
+
+  return cpd;
+}
+
+
 static void p_setup_stream_RHS(
     matrix_t * mttkrp_buf, /* output */
     StreamMatrix * * stream_mats_new,
@@ -157,7 +197,11 @@ splatt_kruskal *  StreamCPD::compute(
   idx_t const stream_mode = _source->stream_mode();
   idx_t const num_modes = _source->num_modes();
 
-  StreamMatrix time_mat(rank);
+  /* TODO fix constructor */
+  _stream_mode = stream_mode;
+  _rank = rank;
+  _nmodes = num_modes;
+
   StreamMatrix * stream_mats_new[SPLATT_MAX_NMODES];
   StreamMatrix * stream_mats_old[SPLATT_MAX_NMODES];
   for(idx_t m=0; m < num_modes; ++m) {
@@ -175,7 +219,7 @@ splatt_kruskal *  StreamCPD::compute(
   for(idx_t m=0; m < num_modes; ++m) {
     aTa[m] = mat_zero(rank, rank);
 
-    /* initialize streaming aTa with identity */
+    /* initialize streaming aTa with all 1s */
     if(m == stream_mode) {
       for(idx_t x=0; x < rank * rank; ++x) {
         aTa[m]->vals[x] = 1.;
@@ -211,6 +255,8 @@ splatt_kruskal *  StreamCPD::compute(
         stream_mats_new[m]->grow_rand(batch->dims[m]);
         mat_ptrs[m] = stream_mats_new[m]->mat();
         mat_aTa(stream_mats_new[m]->mat(), aTa[m]);
+      } else {
+        stream_mats_new[m]->grow_zero(it+1);
       }
     }
 
@@ -298,8 +344,7 @@ splatt_kruskal *  StreamCPD::compute(
     }
 
     /* save time vector */
-    time_mat.grow_zero(it+1);
-    par_memcpy(&(time_mat.vals()[it*rank]),
+    par_memcpy(&(stream_mats_new[stream_mode]->vals()[it*rank]),
       mat_ptrs[stream_mode]->vals, rank * sizeof(val_t));
 
     /*
@@ -312,6 +357,9 @@ splatt_kruskal *  StreamCPD::compute(
         (double) batch->nnz / batch_time.seconds);
 #endif
 
+    splatt_kruskal * batch_cpd = get_kruskal(stream_mats_new);
+    printf("  fit: %0.5f\n", 1 - cpd_error(batch, batch_cpd));
+    splatt_free_cpd(batch_cpd);
 
     /* prepare for next batch */
     tt_free(batch);
@@ -322,39 +370,8 @@ splatt_kruskal *  StreamCPD::compute(
   timer_stop(&timers[TIMER_CPD]);
 
 
-  /* store output */
-  splatt_kruskal * cpd = (splatt_kruskal *) splatt_malloc(sizeof(*cpd));
-  cpd->nmodes = num_modes;
-  cpd->lambda = (val_t *) splatt_malloc(rank * sizeof(*cpd->lambda));
-  cpd->rank = rank;
-  for(idx_t r=0; r < rank; ++r) {
-    cpd->lambda[r] = 1.;
-  }
-  for(idx_t m=0; m < num_modes; ++m) {
-
-    if(m == stream_mode) {
-      cpd->dims[m] = it;
-      cpd->factors[m] = (val_t *)
-          splatt_malloc(it * rank * sizeof(val_t));
-
-      par_memcpy(cpd->factors[m], time_mat.vals(), it * rank * sizeof(val_t));
-    } else {
-      idx_t const nrows = stream_mats_new[m]->num_rows();
-      cpd->dims[m] = nrows;
-
-      cpd->factors[m] = (val_t *) splatt_malloc(nrows * rank * sizeof(val_t));
-      /* permute rows */
-      #pragma omp parallel for schedule(static)
-      for(idx_t i=0; i < nrows; ++i) {
-        idx_t const new_id = _source->lookup_ind(m, i);
-        memcpy(&(cpd->factors[m][i*rank]), 
-               &(stream_mats_new[m]->vals()[new_id * rank]),
-               rank * sizeof(val_t));
-      }
-    }
-  }
-
   /* compute quality assessment */
+  splatt_kruskal * cpd = get_kruskal(stream_mats_new);
   printf("\n");
   printf("final-fit: %0.5f\n", 1 - cpd_error(_source->full_stream(), cpd));
 

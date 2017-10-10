@@ -552,13 +552,16 @@ double cpd_error(
   matrix_t * mat_ptrs[MAX_NMODES+1];
   for(idx_t m=0; m < factored->nmodes; ++m) {
     mat_ptrs[m] = mat_mkptr(factored->factors[m], factored->dims[m], rank, 1);
+#if 1
+    printf(" normsq %lu: %e\n", m+1, mat_norm(mat_ptrs[m]));
+#endif
   }
   mat_ptrs[MAX_NMODES] = mat_alloc(nrows, rank);
   mttkrp_stream(tensor, mat_ptrs, smallest_mode);
-
   
   val_t const * const smallmat = factored->factors[smallest_mode];
   val_t const * const mttkrp  = mat_ptrs[MAX_NMODES]->vals;
+
 
   /*
    * inner product between tensor and factored
