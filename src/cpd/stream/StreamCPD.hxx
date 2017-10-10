@@ -23,13 +23,46 @@ public:
   splatt_kruskal *  compute(
       splatt_idx_t const rank,
       double const forget,
-      splatt_cpd_opts const * const cpd_opts,
+      splatt_cpd_opts * const cpd_opts,
       splatt_global_opts const * const global_opts);
 
 private:
-  splatt_kruskal * get_kruskal(StreamMatrix * * mats);
+  /*
+   * methods
+   */
+  splatt_kruskal * get_kruskal();
+
+  /*
+   * Grow factor matrices and update Gram matrices
+   */
+  void grow_mats(idx_t const * const new_dims);
+
+  /*
+   * Add the historical data to the MTTKRP output before ADMM. */
+  void add_historical(idx_t const mode);
+
+
+  /*
+   * vars
+   */
+  cpd_ws * _cpd_ws;
 
   ParserBase  * _source;
+
+  StreamMatrix * _mttkrp_buf;
+  StreamMatrix * _stream_mats_new[MAX_NMODES];
+  StreamMatrix * _stream_mats_old[MAX_NMODES];
+  /* ADMM */
+  StreamMatrix * _stream_init;
+  StreamMatrix * _stream_auxil;
+  StreamMatrix * _stream_duals[MAX_NMODES];
+
+  /* Stores complete streaming matrix -- TODO toggle */
+  StreamMatrix * _global_time;
+
+  matrix_t * _old_gram;
+
+  matrix_t * _mat_ptrs[MAX_NMODES+1];
 
   idx_t _nmodes;
   idx_t _rank;

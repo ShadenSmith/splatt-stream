@@ -266,9 +266,9 @@ static idx_t p_admm_iterate_chunk(
     /* save starting point for convergence check */
     size_t const bytes = primal->I * rank * sizeof(*primal->vals);
     if(should_parallelize) {
-      memcpy(init_buf->vals, primal->vals, bytes);
-    } else {
       par_memcpy(init_buf->vals, primal->vals, bytes);
+    } else {
+      memcpy(init_buf->vals, primal->vals, bytes);
     }
 
     /* auxiliary = MTTKRP + (rho .* (primal + dual)) */

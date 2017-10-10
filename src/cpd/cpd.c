@@ -388,6 +388,49 @@ cpd_ws * cpd_alloc_ws(
 }
 
 
+
+cpd_ws * cpd_alloc_ws_empty(
+    idx_t const nmodes,
+    idx_t const rank,
+    splatt_cpd_opts const * const cpd_opts,
+    splatt_global_opts const * const global_opts)
+{
+  cpd_ws * ws = splatt_malloc(sizeof(*ws));
+
+  ws->nmodes = nmodes;
+  for(idx_t m=0; m < nmodes; ++m) {
+    ws->aTa[m] = mat_zero(rank, rank);
+  }
+  ws->aTa_buf = mat_zero(rank, rank);
+  ws->gram = mat_zero(rank, rank);
+
+  ws->nthreads = global_opts->num_threads;
+  ws->thds =  thd_init(ws->nthreads, 3,
+    (rank * rank * sizeof(val_t)) + 64,
+    0,
+    (nmodes * rank * sizeof(val_t)) + 64);
+
+  /* MTTKRP space */
+  ws->mttkrp_buf = NULL;
+
+  /* Setup structures needed for constraints. */
+  ws->unconstrained = true;
+  for(idx_t m=0; m < nmodes; ++m) {
+    ws->duals[m] = NULL;
+
+    if(strcmp(cpd_opts->constraints[m]->description, "UNCONSTRAINED") != 0) {
+      ws->unconstrained = false;
+    }
+  }
+
+  ws->auxil    = NULL;
+  ws->mat_init = NULL;
+
+  return ws;
+}
+
+
+
 void cpd_free_ws(
     cpd_ws * const ws)
 {
@@ -552,7 +595,7 @@ double cpd_error(
   matrix_t * mat_ptrs[MAX_NMODES+1];
   for(idx_t m=0; m < factored->nmodes; ++m) {
     mat_ptrs[m] = mat_mkptr(factored->factors[m], factored->dims[m], rank, 1);
-#if 1
+#if 0
     printf(" normsq %lu: %e\n", m+1, mat_norm(mat_ptrs[m]));
 #endif
   }
@@ -600,8 +643,10 @@ double cpd_error(
   double const residual = sqrt(Xnormsq + Znormsq - (2 * inner));
   double const err = residual / sqrt(Xnormsq);
 
+#if 0
   printf("\n");
   printf("Xnormsq: %e Znormsq: %e inner: %e\n", Xnormsq, Znormsq, inner);
+#endif
 
   /* cleanup */
   mat_free(mat_ptrs[MAX_NMODES]);

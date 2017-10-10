@@ -75,9 +75,10 @@ void StreamMatrix::grow_rand(
   }
   grow(new_rows);
 
-  fill_rand(&(_mat->vals[_nrows * _ncols]), (new_rows - _nrows) * _ncols);
-
-  /* store new number of rows */
-  _nrows = new_rows;
+  if(new_rows > _nrows) {
+    fill_rand(&(_mat->vals[_nrows * _ncols]), (new_rows - _nrows) * _ncols);
+    /* store new number of rows */
+    _nrows = new_rows;
+  }
 }
 

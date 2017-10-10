@@ -195,9 +195,10 @@ cpd_ws * cpd_alloc_ws(
     splatt_global_opts const * const global_opts);
 
 
-cpd_ws * cpd_alloc_ws_spten(
-    sptensor_t const * const tensor,
-    idx_t rank,
+#define cpd_alloc_ws_empty splatt_cpd_alloc_ws_empty
+cpd_ws * cpd_alloc_ws_empty(
+    idx_t const nmodes,
+    idx_t const rank,
     splatt_cpd_opts const * const cpd_opts,
     splatt_global_opts const * const global_opts);
 

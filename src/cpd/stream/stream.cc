@@ -50,7 +50,7 @@ splatt_error_type splatt_cpd_stream(
     splatt_idx_t rank,
     splatt_idx_t const stream_mode,
     double const forget,
-    splatt_cpd_opts const * const cpd_options,
+    splatt_cpd_opts * const cpd_options,
     splatt_global_opts const * const global_options)
 {
   p_print_stream_stats(filename, rank, stream_mode, forget,

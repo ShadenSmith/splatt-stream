@@ -27,6 +27,7 @@ public:
   inline idx_t lookup_ind(idx_t mode, idx_t ind) { return _ind_maps_inv[mode][ind]; }
 
   sptensor_t * full_stream();
+  sptensor_t * stream_until(idx_t time);
 
 private:
   sptensor_t * _tensor;

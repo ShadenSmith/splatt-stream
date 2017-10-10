@@ -128,3 +128,25 @@ sptensor_t * ParserSimple::full_stream()
 }
 
 
+sptensor_t * ParserSimple::stream_until(idx_t time)
+{
+  idx_t nnz = 0;
+  while((nnz < _tensor->nnz) &&  _tensor->ind[_stream_mode][nnz] < time) {
+    ++nnz;
+  }
+
+  sptensor_t * ret = tt_alloc(nnz, _tensor->nmodes);
+  par_memcpy(ret->vals, _tensor->vals, nnz * sizeof(*(ret->vals)));
+  for(idx_t m=0; m < _tensor->nmodes; ++m) {
+    par_memcpy(ret->ind[m], _tensor->ind[m], nnz * sizeof(idx_t));
+
+    ret->dims[m] = _tensor->dims[m];
+  }
+
+  ret->dims[_stream_mode] = time;
+
+  return ret;
+}
+
+
+

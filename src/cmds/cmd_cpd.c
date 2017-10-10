@@ -249,26 +249,21 @@ static struct argp_option cpd_options[] = {
   /* override help so we can use -h instead of -? */
   {"help", 'h', 0, 0, "Give this help list."},
 
-  {"seed", LONG_SEED, "SEED", 0, "random seed (default: system time)"},
-  {"iters", 'i', "#ITS", 0, "maximum number of outer iterations (default: 200)"},
 
   {"stream", LONG_STREAM, "MODE", 0, "stream one mode of the tensor (default: none)"},
-  {"forget", 'f', "WEIGHT", 0, "decay factor for streamed mode [0,1] (default: 1.)"},
+  {"forget", 'f', "WEIGHT", 0, "decay factor for streamed mode (default: .95)"},
 
   {"rank", 'r', "RANK", 0, "rank of factorization (default: 10)"},
   {"stem", 's', "PATH", 0, "file stem for output files (default: ./)"},
   {"nowrite", LONG_NOWRITE, 0, 0, "do not write output to file"},
 
-  {"iters", 'i', "NITERS", 0, "maximum number of iterations to use (default: 50)"},
+  {"iters", 'i', "#ITERS", 0, "maximum number of iterations to use (default: 50)"},
   {"tol", LONG_TOL, "TOLERANCE", 0, "convergence tolerance (default: 1e-5)"},
-  {"rank", 'r', "RANK", 0, "rank of decomposition to find (default: 10)"},
-  {"nowrite", LONG_NOWRITE, 0, 0, "do not write output to file"},
   {"seed", LONG_SEED, "SEED", 0, "random seed (default: system time)"},
 
   {"verbose", 'v', 0, 0, "turn on verbose output (default: no)"},
 
   {"threads", 't', "#THREADS", 0, "number of threads (default: ${OMP_NUM_THREADS})", CMD_GROUP_PERFORMANCE},
-  {"threads", 't', "NTHREADS", 0, "number of threads to use (default: #cores)"},
   {"csf", LONG_CSF, "#CSF", 0, "how many CSF to use? {one,two,all} default: two"},
   {"tile", LONG_TILE, 0, 0, "use tiling during MTTKRP", CMD_GROUP_PERFORMANCE},
 
@@ -342,7 +337,7 @@ static void default_cpd_opts(
   args->nfactors  = 10;
 
   args->stream_mode = SPLATT_MAX_NMODES;
-  args->forget = 1.;
+  args->forget = 0.95;
 }
 
 
