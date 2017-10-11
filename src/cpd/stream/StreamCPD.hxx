@@ -32,6 +32,10 @@ private:
    */
   splatt_kruskal * get_kruskal();
 
+  splatt_kruskal * get_prev_kruskal(idx_t previous);
+
+  double compute_errorsq(idx_t num_previous);
+
   /*
    * Grow factor matrices and update Gram matrices
    */

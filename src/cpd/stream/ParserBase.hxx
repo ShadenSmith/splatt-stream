@@ -30,6 +30,8 @@ public:
 
   virtual sptensor_t * stream_until(idx_t time) { return NULL; }
 
+  virtual sptensor_t * stream_prev(idx_t previous) { return NULL; }
+
 
 protected:
   idx_t _stream_mode;

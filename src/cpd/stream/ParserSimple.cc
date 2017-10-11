@@ -29,6 +29,10 @@ ParserSimple::ParserSimple(
   /* sort tensor by streamed mode */
   tt_sort(_tensor, _stream_mode, NULL);
 
+  for(idx_t m=0; m < _tensor->nmodes; ++m) {
+    _prev_dim[m] = 0;
+  }
+
   /* Construct permutation */
   _perm = perm_alloc(_tensor->dims, _tensor->nmodes);
   #pragma omp parallel for schedule(static, 1)
@@ -133,7 +137,8 @@ sptensor_t * ParserSimple::next_batch()
       dim = SS_MAX(dim, ret->ind[m][x]);
     }
 
-    ret->dims[m] = dim + 1;
+    ret->dims[m] = SS_MAX(dim + 1, _prev_dim[m]);
+    _prev_dim[m] = ret->dims[m];
   }
 
   /* update state for next batch */
@@ -175,5 +180,49 @@ sptensor_t * ParserSimple::stream_until(idx_t time)
   return ret;
 }
 
+
+
+sptensor_t * ParserSimple::stream_prev(idx_t previous)
+{
+  if(_batch_num == 0) {
+    return NULL;
+  }
+
+  idx_t const start_time = (previous < _batch_num) ? _batch_num - previous : 0;
+
+  /* find start of range */
+  idx_t start_nnz = 0;
+  while((start_nnz < _tensor->nnz) &&
+        (_tensor->ind[_stream_mode][start_nnz] < start_time)) {
+    ++start_nnz;
+  }
+
+  idx_t const end_nnz = _nnz_ptr;
+  idx_t const nnz = end_nnz - start_nnz;
+
+  /* copy into new tensor */
+  sptensor_t * ret = tt_alloc(nnz, _tensor->nmodes);
+  par_memcpy(ret->vals, &(_tensor->vals[start_nnz]), nnz * sizeof(*(ret->vals)));
+
+  /* streaming inds */
+  #pragma omp parallel for schedule(static)
+  for(idx_t x=0; x < nnz; ++x) {
+    ret->ind[_stream_mode][x] = _tensor->ind[_stream_mode][x+start_nnz] - start_time;
+  }
+  ret->dims[_stream_mode] = _batch_num - start_time; /* may not be previous */
+
+  /* the rest */
+  for(idx_t m=0; m < _tensor->nmodes; ++m) {
+    if(m == _stream_mode) {
+      continue;
+    }
+
+    ret->dims[m] = _prev_dim[m];
+    par_memcpy(ret->ind[m], &(_tensor->ind[m][start_nnz]),
+        nnz * sizeof(**(ret->ind)));
+  }
+
+  return ret;
+}
 
 

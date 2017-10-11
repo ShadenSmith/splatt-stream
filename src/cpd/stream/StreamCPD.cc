@@ -31,6 +31,18 @@ static void p_copy_upper_tri(
 }
 
 
+double StreamCPD::compute_errorsq(
+    idx_t num_previous)
+{
+  splatt_kruskal * cpd = get_prev_kruskal(num_previous);
+  sptensor_t * prev_tensor = _source->stream_prev(num_previous);
+  double const err = cpd_error(prev_tensor, cpd);
+  tt_free(prev_tensor);
+  splatt_free_cpd(cpd);
+  return err * err;
+}
+
+
 
 splatt_kruskal * StreamCPD::get_kruskal()
 {
@@ -68,6 +80,48 @@ splatt_kruskal * StreamCPD::get_kruskal()
 
   return cpd;
 }
+
+
+splatt_kruskal * StreamCPD::get_prev_kruskal(idx_t previous)
+{
+  /* store output */
+  splatt_kruskal * cpd = (splatt_kruskal *) splatt_malloc(sizeof(*cpd));
+  cpd->nmodes = _nmodes;
+  cpd->lambda = (val_t *) splatt_malloc(_rank * sizeof(*cpd->lambda));
+  cpd->rank = _rank;
+  for(idx_t r=0; r < _rank; ++r) {
+    cpd->lambda[r] = 1.;
+  }
+  for(idx_t m=0; m < _nmodes; ++m) {
+    if(m == _stream_mode) {
+      idx_t const nrows = SS_MIN(previous, _global_time->num_rows());
+      idx_t const startrow = _global_time->num_rows() - nrows;
+
+      cpd->dims[m] = nrows;
+      cpd->factors[m] = (val_t *)
+          splatt_malloc(nrows * _rank * sizeof(val_t));
+      par_memcpy(cpd->factors[m], &(_global_time->vals()[startrow * _rank]),
+          nrows * _rank * sizeof(val_t));
+
+    } else {
+      idx_t const nrows = _stream_mats_new[m]->num_rows();
+      cpd->dims[m] = nrows;
+
+      cpd->factors[m] = (val_t *) splatt_malloc(nrows * _rank * sizeof(val_t));
+      /* permute rows */
+      #pragma omp parallel for schedule(static)
+      for(idx_t i=0; i < nrows; ++i) {
+        idx_t const new_id = i;
+        memcpy(&(cpd->factors[m][i*_rank]),
+               &(_stream_mats_new[m]->vals()[new_id * _rank]),
+               _rank * sizeof(val_t));
+      }
+    }
+  }
+
+  return cpd;
+}
+
 
 
 void StreamCPD::grow_mats(
@@ -252,57 +306,60 @@ splatt_kruskal *  StreamCPD::compute(
       splatt_free(tmp);
     }
 
-    /*
-     * Compute new time slice.
-     */
-    timer_start(&timers[TIMER_MTTKRP]);
-    _mat_ptrs[SPLATT_MAX_NMODES]->I = 1;
-    mttkrp_stream(batch, _mat_ptrs, stream_mode);
-
-    timer_stop(&timers[TIMER_MTTKRP]);
-    admm(_stream_mode, _mat_ptrs, NULL, _cpd_ws, cpd_opts, global_opts);
-
-    /* Accumulate new time slice into temporal Gram matrix */
-    val_t       * const restrict ata_vals = _cpd_ws->aTa[stream_mode]->vals;
-    val_t const * const restrict new_slice = _mat_ptrs[stream_mode]->vals;
-    p_copy_upper_tri(_cpd_ws->aTa[stream_mode]);
-    /* save old Gram matrix */
-    par_memcpy(_old_gram->vals, ata_vals, rank * rank * sizeof(*ata_vals));
-    timer_start(&timers[TIMER_ATA]);
-    #pragma omp parallel for schedule(static) if(rank > 50)
-    for(idx_t i=0; i < rank; ++i) {
-      for(idx_t j=0; j < rank; ++j) {
-        ata_vals[j + (i*rank)] += new_slice[i] * new_slice[j];
-      }
-    }
-    timer_stop(&timers[TIMER_ATA]);
-
-
-    /*
-     * Update the remaining modes
-     */
-    for(idx_t m=0; m < num_modes; ++m) {
-      if(m == stream_mode) {
-        continue;
-      }
-
-      /* MTTKRP */
+    for(idx_t outer=0; outer < 5; ++outer) {
+      /*
+       * Compute new time slice.
+       */
       timer_start(&timers[TIMER_MTTKRP]);
-      _mat_ptrs[SPLATT_MAX_NMODES]->I = batch->dims[m];
-      mttkrp_stream(batch, _mat_ptrs, m);
+      _mat_ptrs[SPLATT_MAX_NMODES]->I = 1;
+      mttkrp_stream(batch, _mat_ptrs, stream_mode);
+
       timer_stop(&timers[TIMER_MTTKRP]);
+      admm(_stream_mode, _mat_ptrs, NULL, _cpd_ws, cpd_opts, global_opts);
 
-      /* add historical data to MTTKRP */
-      add_historical(m);
+      /* Accumulate new time slice into temporal Gram matrix */
+      val_t       * const restrict ata_vals = _cpd_ws->aTa[stream_mode]->vals;
+      val_t const * const restrict new_slice = _mat_ptrs[stream_mode]->vals;
+      p_copy_upper_tri(_cpd_ws->aTa[stream_mode]);
+      /* save old Gram matrix */
+      par_memcpy(_old_gram->vals, ata_vals, rank * rank * sizeof(*ata_vals));
+      timer_start(&timers[TIMER_ATA]);
+      #pragma omp parallel for schedule(static) if(rank > 50)
+      for(idx_t i=0; i < rank; ++i) {
+        for(idx_t j=0; j < rank; ++j) {
+          ata_vals[j + (i*rank)] += new_slice[i] * new_slice[j];
+        }
+      }
+      timer_stop(&timers[TIMER_ATA]);
 
-      /* Reset dual matrix. TODO: necessary? */
-      memset(_cpd_ws->duals[m]->vals, 0,
-          _cpd_ws->duals[m]->I * _rank * sizeof(val_t));
-      admm(m, _mat_ptrs, NULL, _cpd_ws, cpd_opts, global_opts);
 
-      /* lastly, update aTa */
-      mat_aTa(_stream_mats_new[m]->mat(), _cpd_ws->aTa[m]);
-    } /* foreach mode */
+      /*
+       * Update the remaining modes
+       */
+      for(idx_t m=0; m < num_modes; ++m) {
+        if(m == stream_mode) {
+          continue;
+        }
+
+        /* MTTKRP */
+        timer_start(&timers[TIMER_MTTKRP]);
+        _mat_ptrs[SPLATT_MAX_NMODES]->I = batch->dims[m];
+        mttkrp_stream(batch, _mat_ptrs, m);
+        timer_stop(&timers[TIMER_MTTKRP]);
+
+        /* add historical data to MTTKRP */
+        add_historical(m);
+
+        /* Reset dual matrix. TODO: necessary? */
+        memset(_cpd_ws->duals[m]->vals, 0,
+            _cpd_ws->duals[m]->I * _rank * sizeof(val_t));
+        admm(m, _mat_ptrs, NULL, _cpd_ws, cpd_opts, global_opts);
+
+        /* lastly, update aTa */
+        mat_aTa(_stream_mats_new[m]->mat(), _cpd_ws->aTa[m]);
+
+      } /* foreach mode */
+    } /* foreach outer */
 
     /* Incorporate forgetting factor */
     for(idx_t x=0; x < _rank * _rank; ++x) {
@@ -328,25 +385,28 @@ splatt_kruskal *  StreamCPD::compute(
      * Batch stats
      */
     timer_stop(&batch_time);
-#if 0
-    printf("batch %5lu: %lu nnz (%0.3fs) (%0.3e NNZ/s)\n",
-        it+1, batch->nnz, batch_time.seconds,
-        (double) batch->nnz / batch_time.seconds);
+    ++it;
+
+#define CHECK_ERR
+#ifdef CHECK_ERR
+    double const global_err   = compute_errorsq(it);
+    double const local_err    = compute_errorsq(1);
+    double const local10_err  = compute_errorsq(10);
+#else
+    double const global_err   = 0;
+    double const local_err    = 0;
+    double const local10_err  = 0;
 #endif
 
-#if 1
-    splatt_kruskal * batch_cpd = get_kruskal();
-    sptensor_t * until = _source->stream_until(it+1);
-    double const global_err = cpd_error(until, batch_cpd);
-    printf("  global-err: %0.5f\n", global_err * global_err);
-    tt_free(until);
-    splatt_free_cpd(batch_cpd);
-#endif
+    printf("batch %5lu: %5lu nnz (%0.3fs) (%0.3e NNZ/s) "
+           "global: %0.5f local-1: %0.5f local-10: %0.5f\n",
+        it, batch->nnz, batch_time.seconds,
+        (double) batch->nnz / batch_time.seconds,
+        global_err, local_err, local10_err);
 
     /* prepare for next batch */
     tt_free(batch);
     batch = _source->next_batch();
-    ++it;
     /* XXX */
   } /* while batch != NULL */
   timer_stop(&timers[TIMER_CPD]);
@@ -372,7 +432,5 @@ splatt_kruskal *  StreamCPD::compute(
 
   return cpd;
 }
-
-
 
 

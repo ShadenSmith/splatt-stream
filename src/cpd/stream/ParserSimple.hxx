@@ -27,9 +27,12 @@ public:
 
   sptensor_t * full_stream();
   sptensor_t * stream_until(idx_t time);
+  sptensor_t * stream_prev(idx_t previous);
 
 private:
   sptensor_t * _tensor;
+
+  idx_t _prev_dim[SPLATT_MAX_NMODES];
 
   permutation_t * _perm;
 
