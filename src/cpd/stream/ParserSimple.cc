@@ -4,6 +4,7 @@
 
 extern "C" {
 #include "../../io.h"
+#include "../../reorder.h"
 #include "../../sort.h"
 #include "../../util.h"
 }
@@ -27,12 +28,57 @@ ParserSimple::ParserSimple(
 
   /* sort tensor by streamed mode */
   tt_sort(_tensor, _stream_mode, NULL);
+
+  /* Construct permutation */
+  _perm = perm_alloc(_tensor->dims, _tensor->nmodes);
+  #pragma omp parallel for schedule(static, 1)
+  for(idx_t m=0; m < _tensor->nmodes; ++m) {
+    idx_t * const restrict perm  = _perm->perms[m];
+    idx_t * const restrict iperm = _perm->iperms[m];
+
+    /* streaming mode is sorted and just gets identity */
+    if(m == stream_mode) {
+      for(idx_t i=0; i < _tensor->dims[m]; ++i) {
+        perm[i]  = i;
+        iperm[i] = i;
+      }
+      continue;
+    }
+
+    /* initialize */
+    for(idx_t i=0; i < _tensor->dims[m]; ++i) {
+      perm[i]  = SPLATT_IDX_MAX;
+      iperm[i] = SPLATT_IDX_MAX;
+    }
+
+
+    /*
+     * Relabel tensor.
+     */
+
+    idx_t seen = 0; /* current index */
+
+    idx_t * const restrict inds = _tensor->ind[m];
+    for(idx_t x=0; x < _tensor->nnz; ++x) {
+      idx_t const ind = inds[x];
+
+      /* if this is the first appearance of ind */
+      if(perm[ind] == SPLATT_IDX_MAX) {
+        perm[ind]   = seen;
+        iperm[seen] = ind;
+        ++seen;
+      }
+
+      inds[x] = perm[ind];
+    }
+  } /* foreach mode */
 }
 
 
 ParserSimple::~ParserSimple()
 {
   tt_free(_tensor);
+  perm_free(_perm);
 }
 
 
@@ -72,28 +118,22 @@ sptensor_t * ParserSimple::next_batch()
     ret->ind[_stream_mode][x] = 0;
   }
 
-  /* non-streaming modes use _ind_maps */
-  #pragma omp parallel for schedule(static, 1)
   for(idx_t m=0; m < _tensor->nmodes; ++m) {
     if(m == _stream_mode) {
       ret->dims[_stream_mode] = 1;
       continue;
     }
 
-    for(idx_t x=0; x < nnz; ++x) {
-      idx_t const orig_ind = _tensor->ind[m][start_nnz + x];
+    par_memcpy(ret->ind[m], &(_tensor->ind[m][start_nnz]),
+        nnz * sizeof(**(ret->ind)));
 
-      /* insert if not found */
-      if(_ind_maps[m].find(orig_ind) == _ind_maps[m].end()) {
-        size_t const size = _ind_maps[m].size();
-        _ind_maps[m][orig_ind] = size;
-        _ind_maps_inv[m][size] = orig_ind;
-      }
-      /* map original index to increasing one */
-      ret->ind[m][x] = _ind_maps[m][orig_ind];
+    idx_t dim = 0;
+    #pragma omp parallel for schedule(static) reduction(max: dim)
+    for(idx_t x=0; x < nnz; ++x) {
+      dim = SS_MAX(dim, ret->ind[m][x]);
     }
 
-    ret->dims[m] = _ind_maps[m].size();
+    ret->dims[m] = dim + 1;
   }
 
   /* update state for next batch */
@@ -106,19 +146,6 @@ sptensor_t * ParserSimple::next_batch()
 idx_t ParserSimple::num_modes()
 {
   return _tensor->nmodes;
-}
-
-idx_t ParserSimple::mode_length(
-    idx_t which_mode)
-{
-  if(which_mode < _tensor->nmodes) {
-    return _ind_maps[which_mode].size();
-
-  } else {
-    fprintf(stderr, "ERROR: requesting mode %lu of %lu\n",
-        which_mode+1, _tensor->nmodes);
-    return 0;
-  }
 }
 
 

@@ -58,7 +58,7 @@ splatt_kruskal * StreamCPD::get_kruskal()
       /* permute rows */
       #pragma omp parallel for schedule(static)
       for(idx_t i=0; i < nrows; ++i) {
-        idx_t const new_id = _source->lookup_ind(m, i);
+        idx_t const new_id = i;
         memcpy(&(cpd->factors[m][i*_rank]),
                &(_stream_mats_new[m]->vals()[new_id * _rank]),
                _rank * sizeof(val_t));
@@ -337,7 +337,8 @@ splatt_kruskal *  StreamCPD::compute(
 #if 1
     splatt_kruskal * batch_cpd = get_kruskal();
     sptensor_t * until = _source->stream_until(it+1);
-    printf("  global-err: %0.5f\n", cpd_error(until, batch_cpd));
+    double const global_err = cpd_error(until, batch_cpd);
+    printf("  global-err: %0.5f\n", global_err * global_err);
     tt_free(until);
     splatt_free_cpd(batch_cpd);
 #endif
@@ -353,9 +354,9 @@ splatt_kruskal *  StreamCPD::compute(
 
   /* compute quality assessment */
   splatt_kruskal * cpd = get_kruskal();
+  double const final_err = cpd_error(_source->full_stream(), cpd);
   printf("\n");
-  printf("final-err: %0.5f\n", cpd_error(_source->full_stream(), cpd));
-
+  printf("final-err: %0.5f\n",  final_err * final_err);
 
   mat_free(_old_gram);
   for(idx_t m=0; m < num_modes; ++m) {

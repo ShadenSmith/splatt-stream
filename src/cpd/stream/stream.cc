@@ -68,7 +68,11 @@ splatt_error_type splatt_cpd_stream(
 
     matrix_t tmpmat;
     mat_fillptr(&tmpmat, factored->factors[m], factored->dims[m], rank, 1);
-    mat_write(&tmpmat, matfname);
+
+    matrix_t * perm_mat = perm_matrix(&tmpmat, parser.iperm(m), NULL);
+
+    mat_write(perm_mat, matfname);
+    mat_free(perm_mat);
     splatt_free(matfname);
   }
 

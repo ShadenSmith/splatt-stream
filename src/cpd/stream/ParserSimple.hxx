@@ -3,11 +3,9 @@
 
 #include "ParserBase.hxx"
 
-#include <unordered_map>
-
-
 extern "C" {
 #include "../../sptensor.h"
+#include "../../reorder.h"
 }
 
 class ParserSimple : public ParserBase
@@ -20,11 +18,12 @@ public:
   ~ParserSimple();
 
   sptensor_t * next_batch();
-  idx_t mode_length(idx_t which_mode);
   idx_t num_modes();
 
   /* invert mapping to get original indices */
-  inline idx_t lookup_ind(idx_t mode, idx_t ind) { return _ind_maps_inv[mode][ind]; }
+  inline idx_t lookup_ind(idx_t mode, idx_t ind) { return _perm->iperms[mode][ind]; }
+
+  inline idx_t * iperm(idx_t mode) { return _perm->iperms[mode]; }
 
   sptensor_t * full_stream();
   sptensor_t * stream_until(idx_t time);
@@ -32,9 +31,7 @@ public:
 private:
   sptensor_t * _tensor;
 
-  /* mapping of original indices to seen ones */
-  std::unordered_map<idx_t, idx_t> _ind_maps[SPLATT_MAX_NMODES];
-  std::unordered_map<idx_t, idx_t> _ind_maps_inv[SPLATT_MAX_NMODES];
+  permutation_t * _perm;
 
   /* batch state */
   idx_t _batch_num;
