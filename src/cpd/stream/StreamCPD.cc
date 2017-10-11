@@ -78,6 +78,8 @@ void StreamCPD::grow_mats(
       idx_t const new_rows = new_dims[m];
 
       _stream_mats_new[m]->grow_rand(new_rows);
+      _mat_ptrs[m] = _stream_mats_new[m]->mat();
+      mat_aTa(_mat_ptrs[m], _cpd_ws->aTa[m]);
 
       _stream_mats_old[m]->grow_zero(new_rows);
       _stream_duals[m]->grow_zero(new_rows);
@@ -85,10 +87,6 @@ void StreamCPD::grow_mats(
       _stream_auxil->grow_zero(new_rows);
       _stream_init->grow_zero(new_rows);
       _mttkrp_buf->grow_zero(new_rows);
-
-      _mat_ptrs[m] = _stream_mats_new[m]->mat();
-      mat_aTa(_mat_ptrs[m], _cpd_ws->aTa[m]);
-
     } else {
       _stream_duals[m]->grow_zero(1); /* we only need 1 row for time dual */
       _global_time->grow_zero(_global_time->num_rows() + 1);
@@ -166,7 +164,7 @@ void StreamCPD::add_historical(
         CblasRowMajor, CblasNoTrans, CblasNoTrans,
         M, N, K,
         1.,
-        _stream_mats_new[mode]->vals(), LDA,
+        _stream_mats_old[mode]->vals(), LDA,
         ata_buf->vals, LDB,
         1.,
         _mttkrp_buf->vals(), _rank);
@@ -260,12 +258,14 @@ splatt_kruskal *  StreamCPD::compute(
     timer_start(&timers[TIMER_MTTKRP]);
     _mat_ptrs[SPLATT_MAX_NMODES]->I = 1;
     mttkrp_stream(batch, _mat_ptrs, stream_mode);
+
     timer_stop(&timers[TIMER_MTTKRP]);
     admm(_stream_mode, _mat_ptrs, NULL, _cpd_ws, cpd_opts, global_opts);
 
     /* Accumulate new time slice into temporal Gram matrix */
     val_t       * const restrict ata_vals = _cpd_ws->aTa[stream_mode]->vals;
     val_t const * const restrict new_slice = _mat_ptrs[stream_mode]->vals;
+    p_copy_upper_tri(_cpd_ws->aTa[stream_mode]);
     /* save old Gram matrix */
     par_memcpy(_old_gram->vals, ata_vals, rank * rank * sizeof(*ata_vals));
     timer_start(&timers[TIMER_ATA]);
