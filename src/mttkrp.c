@@ -1329,6 +1329,7 @@ void mttkrp_csf(
         mats, mode, thds, ws);
   }
 
+#if 0
   /* print thread times, if requested */
   if(global_opts->verbosity == SPLATT_VERBOSITY_MAX) {
     printf("MTTKRP mode %"SPLATT_PF_IDX": ", mode+1);
@@ -1337,6 +1338,7 @@ void mttkrp_csf(
       printf("  reduction-time: %0.3fs\n", ws->reduction_time);
     }
   }
+#endif
   thd_reset(thds, splatt_omp_get_max_threads());
 }
 

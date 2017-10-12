@@ -173,6 +173,7 @@ void StreamCPD::add_historical(
     idx_t const mode)
 {
   matrix_t * ata_buf = _cpd_ws->aTa_buf;
+  timer_start(&timers[TIMER_MATMUL]);
 
   /* 
    * Construct Gram matrix.
@@ -237,7 +238,7 @@ void StreamCPD::add_historical(
         1.,
         _mttkrp_buf->vals(), _rank);
   }
-  
+  timer_stop(&timers[TIMER_MATMUL]);
   mat_free(_historical);
 }
 
@@ -304,6 +305,9 @@ splatt_kruskal *  StreamCPD::compute(
   csf_opts[SPLATT_OPTION_VERBOSITY] = SPLATT_VERBOSITY_NONE;
 #endif
 
+  idx_t const max_outer = 5;
+  printf("OUTER=%lu\n", max_outer);
+
   /*
    * Stream
    */
@@ -336,7 +340,7 @@ splatt_kruskal *  StreamCPD::compute(
       splatt_free(tmp);
     }
 
-    for(idx_t outer=0; outer < 5; ++outer) {
+    for(idx_t outer=0; outer < max_outer; ++outer) {
       /*
        * Compute new time slice.
        */
@@ -347,7 +351,6 @@ splatt_kruskal *  StreamCPD::compute(
 #else
       mttkrp_stream(batch, _mat_ptrs, stream_mode);
 #endif
-
       timer_stop(&timers[TIMER_MTTKRP]);
       admm(_stream_mode, _mat_ptrs, NULL, _cpd_ws, cpd_opts, global_opts);
 
