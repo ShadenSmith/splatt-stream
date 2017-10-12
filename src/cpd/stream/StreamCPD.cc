@@ -23,7 +23,7 @@ extern "C" {
 #endif
 
 #ifndef USE_CSF
-#define USE_CSF 1
+#define USE_CSF 0
 #endif
 
 
@@ -274,7 +274,14 @@ splatt_kruskal *  StreamCPD::compute(
   /* register constraints */
   for(idx_t m=0; m < num_modes; ++m) {
     if(m != stream_mode) {
-      splatt_register_maxcolnorm(cpd_opts, &m, 1);
+      /* convert NTF to norm-constrained NTF */
+      if(strcmp(cpd_opts->constraints[m]->description, "NON-NEGATIVE") == 0) {
+        splatt_register_maxcolnorm_nonneg(cpd_opts, &m, 1);
+
+      /* just column norm constraints */
+      } else if(strcmp(cpd_opts->constraints[m]->description, "UNCONSTRAINED") == 0) {
+        splatt_register_maxcolnorm(cpd_opts, &m, 1);
+      }
     }
   }
 

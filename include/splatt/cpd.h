@@ -233,6 +233,23 @@ splatt_error_type splatt_register_maxcolnorm(
 
 
 /**
+* @brief Register a max-column-norm constraint with a list of modes. The factor
+*        will be nonnegative and columns will be constraint to norm <= 1.
+*
+* @param[out] opts The CPD options structure to modify.
+* @param modes_included A list of the modes to register.
+* @param num_modes The length of 'modes_included'.
+*
+* @return SPLATT error code.
+*/
+splatt_error_type splatt_register_maxcolnorm_nonneg(
+    splatt_cpd_opts * opts,
+    splatt_idx_t const * const modes_included,
+    splatt_idx_t const num_modes);
+
+
+
+/**
 * @brief Register a non-negativity constraint with a list of modes.
 *
 * @param[out] opts The CPD options structure to modify.
