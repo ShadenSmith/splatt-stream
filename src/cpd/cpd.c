@@ -254,8 +254,8 @@ double cpd_iterate(
     /* calculate outer convergence */
     double const norm = cpd_norm(ws, norms);
     double const inner = cpd_innerprod(nmodes-1, ws, mats, norms);
-    double const residual = sqrt(ttnormsq + norm - (2 * inner));
-    err = (residual / sqrt(ttnormsq));
+    double const residual = ttnormsq + norm - (2 * inner);
+    err = residual / ttnormsq;
 
     assert(err <= olderr);
     timer_stop(&itertime);
@@ -263,7 +263,7 @@ double cpd_iterate(
     /* print progress */
     if(global_opts->verbosity > SPLATT_VERBOSITY_NONE) {
       printf("  its = %4"SPLATT_PF_IDX" (%0.3"SPLATT_PF_VAL"s)  "
-             "rel-err = %0.5"SPLATT_PF_VAL"  delta = %+0.4e\n",
+             "rel-errsq = %0.5"SPLATT_PF_VAL"  delta = %+0.4e\n",
           it+1, itertime.seconds, err, err - olderr);
       if(global_opts->verbosity > SPLATT_VERBOSITY_LOW) {
         for(idx_t m=0; m < nmodes; ++m) {

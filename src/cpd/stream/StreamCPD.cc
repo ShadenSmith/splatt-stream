@@ -8,12 +8,24 @@ extern "C" {
 #include "../../timer.h"
 #include "../../io.h" /* XXX debug */
 #include "../../util.h"
-#include "../../splatt_lapack.h"
 }
+
+
+#ifdef SPLATT_USE_CBLAS
+#include <mkl_cblas.h>
+#else
+#include <cblas.h>
+#endif
+
 
 #ifndef CHECK_ERR
 #define CHECK_ERR 1
 #endif
+
+#ifndef USE_CSF
+#define USE_CSF 1
+#endif
+
 
 static void p_copy_upper_tri(
     matrix_t * const M)
@@ -285,6 +297,13 @@ splatt_kruskal *  StreamCPD::compute(
 
   printf("\n");
 
+#if USE_CSF == 1
+  double * csf_opts = splatt_default_opts();
+  csf_opts[SPLATT_OPTION_CSF_ALLOC] = SPLATT_CSF_ONEMODE;
+  csf_opts[SPLATT_OPTION_TILE] = SPLATT_DENSETILE;
+  csf_opts[SPLATT_OPTION_VERBOSITY] = SPLATT_VERBOSITY_NONE;
+#endif
+
   /*
    * Stream
    */
@@ -294,6 +313,15 @@ splatt_kruskal *  StreamCPD::compute(
   while(batch != NULL) {
     sp_timer_t batch_time;
     timer_fstart(&batch_time);
+
+#if USE_CSF == 1
+    sp_timer_t csf_timer;
+    timer_fstart(&csf_timer);
+    splatt_csf * csf = splatt_csf_alloc(batch, csf_opts);
+    splatt_mttkrp_ws * mttkrp_ws = splatt_mttkrp_alloc_ws(csf, _rank, csf_opts);
+    timer_stop(&csf_timer);
+    printf("    csf-alloc: %0.3fs\n", csf_timer.seconds);
+#endif
 
     grow_mats(batch->dims);
     /* normalize factors on the first batch */
@@ -314,7 +342,11 @@ splatt_kruskal *  StreamCPD::compute(
        */
       timer_start(&timers[TIMER_MTTKRP]);
       _mat_ptrs[SPLATT_MAX_NMODES]->I = 1;
+#if USE_CSF == 1
+      mttkrp_csf(csf, _mat_ptrs, stream_mode, _cpd_ws->thds, mttkrp_ws, global_opts);
+#else
       mttkrp_stream(batch, _mat_ptrs, stream_mode);
+#endif
 
       timer_stop(&timers[TIMER_MTTKRP]);
       admm(_stream_mode, _mat_ptrs, NULL, _cpd_ws, cpd_opts, global_opts);
@@ -346,7 +378,11 @@ splatt_kruskal *  StreamCPD::compute(
         /* MTTKRP */
         timer_start(&timers[TIMER_MTTKRP]);
         _mat_ptrs[SPLATT_MAX_NMODES]->I = batch->dims[m];
+#if USE_CSF == 1
+        mttkrp_csf(csf, _mat_ptrs, m, _cpd_ws->thds, mttkrp_ws, global_opts);
+#else
         mttkrp_stream(batch, _mat_ptrs, m);
+#endif
         timer_stop(&timers[TIMER_MTTKRP]);
 
         /* add historical data to MTTKRP */
@@ -407,11 +443,18 @@ splatt_kruskal *  StreamCPD::compute(
 
     /* prepare for next batch */
     tt_free(batch);
+#if USE_CSF == 1
+    splatt_free_csf(csf, csf_opts);
+    splatt_mttkrp_free_ws(mttkrp_ws);
+#endif
     batch = _source->next_batch();
     /* XXX */
   } /* while batch != NULL */
   timer_stop(&timers[TIMER_CPD]);
 
+#if USE_CSF == 1
+  splatt_free_opts(csf_opts);
+#endif
 
   /* compute quality assessment */
   splatt_kruskal * cpd = get_kruskal();

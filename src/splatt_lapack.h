@@ -9,14 +9,6 @@
 #include "base.h"
 
 
-#ifdef SPLATT_USE_CBLAS
-#include <mkl_cblas.h>
-#else
-#include <cblas.h>
-#endif
-
-
-
 
 
 /******************************************************************************
