@@ -11,7 +11,7 @@ extern "C" {
 }
 
 
-#ifdef SPLATT_USE_CBLAS
+#ifdef SPLATT_USE_MKL
 #include <mkl_cblas.h>
 #else
 #include <cblas.h>
