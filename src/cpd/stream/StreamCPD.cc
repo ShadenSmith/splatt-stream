@@ -13,6 +13,10 @@ extern "C" {
 }
 
 
+#ifndef CHECK_ERR
+#define CHECK_ERR 1
+#endif
+
 static void p_copy_upper_tri(
     matrix_t * const M)
 {
@@ -387,8 +391,7 @@ splatt_kruskal *  StreamCPD::compute(
     timer_stop(&batch_time);
     ++it;
 
-#define CHECK_ERR
-#ifdef CHECK_ERR
+#if CHECK_ERR == 1
     double const global_err   = compute_errorsq(it);
     double const local_err    = compute_errorsq(1);
     double const local10_err  = compute_errorsq(10);
@@ -398,7 +401,7 @@ splatt_kruskal *  StreamCPD::compute(
     double const local10_err  = 0;
 #endif
 
-    printf("batch %5lu: %5lu nnz (%0.3fs) (%0.3e NNZ/s) "
+    printf("batch %5lu: %7lu nnz (%0.5fs) (%0.3e NNZ/s) "
            "global: %0.5f local-1: %0.5f local-10: %0.5f\n",
         it, batch->nnz, batch_time.seconds,
         (double) batch->nnz / batch_time.seconds,
