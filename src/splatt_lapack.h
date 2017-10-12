@@ -9,6 +9,14 @@
 #include "base.h"
 
 
+#ifdef SPLATT_USE_CBLAS
+#include <mkl_cblas.h>
+#else
+#include <cblas.h>
+#endif
+
+
+
 
 
 /******************************************************************************
@@ -28,6 +36,7 @@
  * PROTOTYPES
  *****************************************************************************/
 
+#ifndef SPLATT_USE_MKL
 /* Matrix multiplication */
 void SPLATT_BLAS(gemm)(
     char *,
@@ -110,4 +119,5 @@ void SPLATT_BLAS(gelss)(
     splatt_blas_int *,
     splatt_blas_int *);
 
+#endif
 #endif

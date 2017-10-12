@@ -8,10 +8,8 @@ extern "C" {
 #include "../../timer.h"
 #include "../../io.h" /* XXX debug */
 #include "../../util.h"
-
-#include <cblas.h>
+#include "../../splatt_lapack.h"
 }
-
 
 #ifndef CHECK_ERR
 #define CHECK_ERR 1
