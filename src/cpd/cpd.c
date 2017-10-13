@@ -203,8 +203,6 @@ double cpd_iterate(
     mat_aTa(mats[m], ws->aTa[m]);
   }
 
-  printf("SPLATT_ADMM_ROW_CONVERGE: %d\n\n", SPLATT_ADMM_ROW_CONVERGE);
-
   /* XXX TODO: CSF opts */
   double * opts = splatt_default_opts();
 
@@ -306,6 +304,7 @@ double cpd_iterate(
 
   timer_stop(&timers[TIMER_CPD]);
 
+  factored->fit = 1 - err;
   return err;
 }
 

@@ -10,6 +10,8 @@ extern "C" {
 #include "../../util.h"
 }
 
+#include <math.h>
+
 
 #ifdef SPLATT_USE_MKL
 #include <mkl_cblas.h>
@@ -18,8 +20,8 @@ extern "C" {
 #endif
 
 
-#ifndef CHECK_ERR
-#define CHECK_ERR 1
+#ifndef CHECK_ERR_INTERVAL
+#define CHECK_ERR_INTERVAL 1
 #endif
 
 #ifndef USE_CSF
@@ -45,6 +47,7 @@ static void p_copy_upper_tri(
 }
 
 
+
 double StreamCPD::compute_errorsq(
     idx_t num_previous)
 {
@@ -55,6 +58,28 @@ double StreamCPD::compute_errorsq(
   splatt_free_cpd(cpd);
   return err * err;
 }
+
+
+double StreamCPD::compute_cpd_errorsq(
+    idx_t num_previous)
+{
+  sptensor_t * prev_tensor = _source->stream_prev(num_previous);
+
+  double * csf_opts = splatt_default_opts();
+  splatt_csf * csf = splatt_csf_alloc(prev_tensor, csf_opts);
+  splatt_free(prev_tensor);
+
+  splatt_kruskal * newcpd = splatt_alloc_cpd(csf, _rank);
+  splatt_cpd(csf, _rank, NULL, NULL, newcpd);
+  splatt_free_csf(csf, csf_opts);
+
+  double const err = 1 - newcpd->fit;
+
+  splatt_free_cpd(newcpd);
+  splatt_free_opts(csf_opts);
+  return err;
+}
+
 
 
 
@@ -175,7 +200,7 @@ void StreamCPD::add_historical(
   matrix_t * ata_buf = _cpd_ws->aTa_buf;
   timer_start(&timers[TIMER_MATMUL]);
 
-  /* 
+  /*
    * Construct Gram matrix.
    */
 
@@ -219,7 +244,7 @@ void StreamCPD::add_historical(
   }
 
 
-  /* 
+  /*
    * mttkrp += old * aTa_buf
    */
   {
@@ -312,17 +337,19 @@ splatt_kruskal *  StreamCPD::compute(
   csf_opts[SPLATT_OPTION_VERBOSITY] = SPLATT_VERBOSITY_NONE;
 #endif
 
-  idx_t const max_outer = 5;
+  idx_t const max_outer = 10;
   printf("OUTER=%lu\n", max_outer);
 
   /*
    * Stream
    */
+  sp_timer_t stream_time;
+  timer_reset(&stream_time);
   idx_t it = 0;
-  timer_start(&timers[TIMER_CPD]);
   sptensor_t * batch = _source->next_batch();
   while(batch != NULL) {
     sp_timer_t batch_time;
+    timer_start(&stream_time);
     timer_fstart(&batch_time);
 
 #if USE_CSF == 1
@@ -347,7 +374,10 @@ splatt_kruskal *  StreamCPD::compute(
       splatt_free(tmp);
     }
 
+    val_t prev_delta = 0.;
     for(idx_t outer=0; outer < max_outer; ++outer) {
+      val_t delta = 0.;
+
       /*
        * Compute new time slice.
        */
@@ -406,7 +436,20 @@ splatt_kruskal *  StreamCPD::compute(
         /* lastly, update aTa */
         mat_aTa(_stream_mats_new[m]->mat(), _cpd_ws->aTa[m]);
 
+        delta += 
+            mat_norm_diff(_stream_mats_old[m]->mat(), _stream_mats_new[m]->mat())
+                / mat_norm(_stream_mats_new[m]->mat());
       } /* foreach mode */
+
+      printf("  delta: %e prev_delta: %e (%e diff)\n", delta, prev_delta, fabs(delta - prev_delta));
+
+      /* check convergence */
+      if(outer > 0 && fabs(delta - prev_delta) < 1e-1) {
+        printf("  converged in: %lu\n", outer+1);
+        prev_delta = 0.;
+        break;
+      }
+      prev_delta = delta;
     } /* foreach outer */
 
     /* Incorporate forgetting factor */
@@ -433,23 +476,28 @@ splatt_kruskal *  StreamCPD::compute(
      * Batch stats
      */
     timer_stop(&batch_time);
+    timer_stop(&stream_time);
     ++it;
 
-#if CHECK_ERR == 1
-    double const global_err   = compute_errorsq(it);
-    double const local_err    = compute_errorsq(1);
-    double const local10_err  = compute_errorsq(10);
-#else
-    double const global_err   = 0;
-    double const local_err    = 0;
-    double const local10_err  = 0;
-#endif
+    
+    double local_err   = compute_errorsq(1);
+    double global_err  = -1.;
+    double local10_err = -1.;
+    double cpd_err     = -1.;
+    if((it > 0) && ((it % CHECK_ERR_INTERVAL == 0) || _source->last_batch())) {
+      global_err  = compute_errorsq(it);
+      local10_err = compute_errorsq(10);
+      cpd_err     = compute_cpd_errorsq(it);
+      if(isnan(cpd_err)) {
+        cpd_err = -1.;
+      }
+    }
 
     printf("batch %5lu: %7lu nnz (%0.5fs) (%0.3e NNZ/s) "
-           "global: %0.5f local-1: %0.5f local-10: %0.5f\n",
+           "cpd: %+0.5f global: %+0.5f local-1: %+0.5f local-10: %+0.5f\n",
         it, batch->nnz, batch_time.seconds,
         (double) batch->nnz / batch_time.seconds,
-        global_err, local_err, local10_err);
+        cpd_err, global_err, local_err, local10_err);
 
     /* prepare for next batch */
     tt_free(batch);
@@ -460,7 +508,8 @@ splatt_kruskal *  StreamCPD::compute(
     batch = _source->next_batch();
     /* XXX */
   } /* while batch != NULL */
-  timer_stop(&timers[TIMER_CPD]);
+
+  printf("stream-time: %0.3fs\n", stream_time.seconds);
 
 #if USE_CSF == 1
   splatt_free_opts(csf_opts);

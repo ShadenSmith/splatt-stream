@@ -63,7 +63,12 @@ splatt_global_opts * splatt_alloc_global_opts(void)
 
   gopts->random_seed = time(NULL);
 
+#if 0
+  /* XXX */
   gopts->verbosity = SPLATT_VERBOSITY_HIGH;
+#else
+  gopts->verbosity = SPLATT_VERBOSITY_NONE;
+#endif
 
   return gopts;
 }

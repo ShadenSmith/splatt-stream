@@ -154,6 +154,10 @@ void mat_cholesky(
 val_t mat_norm(
     matrix_t const * const A);
 
+val_t mat_norm_diff(
+    matrix_t const * const A,
+    matrix_t const * const B);
+
 
 void mat_solve_cholesky(
     matrix_t * const cholesky,

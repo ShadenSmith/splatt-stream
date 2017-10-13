@@ -26,6 +26,8 @@ public:
   virtual idx_t * iperm(idx_t mode) { return NULL; }
   virtual idx_t lookup_ind(idx_t mode, idx_t ind) { return ind; }
 
+  virtual bool last_batch() = 0;
+
   virtual sptensor_t * full_stream() { return NULL; }
 
   virtual sptensor_t * stream_until(idx_t time) { return NULL; }

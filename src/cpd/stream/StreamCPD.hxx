@@ -36,6 +36,7 @@ private:
 
   double compute_errorsq(idx_t num_previous);
 
+  double compute_cpd_errorsq(idx_t num_previous);
   /*
    * Grow factor matrices and update Gram matrices
    */

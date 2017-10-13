@@ -520,3 +520,24 @@ val_t mat_norm(
   }
   return sqrt(norm);
 }
+
+
+val_t mat_norm_diff(
+    matrix_t const * const A,
+    matrix_t const * const B)
+{
+  assert(A->I == B->I);
+  assert(A->J == B->J);
+
+  val_t norm = 0.;
+  val_t const * const restrict avals = A->vals;
+  val_t const * const restrict bvals = B->vals;
+  #pragma omp parallel for schedule(static) reduction(+:norm)
+  for(idx_t x=0; x < A->I * A->J; ++x) {
+    val_t const diff = avals[x] - bvals[x];
+    norm += diff * diff;
+  }
+  return sqrt(norm);
+}
+
+

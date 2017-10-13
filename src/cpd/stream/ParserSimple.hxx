@@ -25,6 +25,8 @@ public:
 
   inline idx_t * iperm(idx_t mode) { return _perm->iperms[mode]; }
 
+  bool last_batch();
+
   sptensor_t * full_stream();
   sptensor_t * stream_until(idx_t time);
   sptensor_t * stream_prev(idx_t previous);

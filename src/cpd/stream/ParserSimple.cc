@@ -226,3 +226,9 @@ sptensor_t * ParserSimple::stream_prev(idx_t previous)
 }
 
 
+bool ParserSimple::last_batch()
+{
+  return _nnz_ptr == _tensor->nnz;
+}
+
+
