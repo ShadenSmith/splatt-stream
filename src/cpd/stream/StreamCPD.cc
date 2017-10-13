@@ -6,8 +6,8 @@ extern "C" {
 #include "../admm.h"
 #include "../../mttkrp.h"
 #include "../../timer.h"
-#include "../../io.h" /* XXX debug */
 #include "../../util.h"
+#include "../../stats.h"
 }
 
 #include <math.h>
@@ -21,7 +21,7 @@ extern "C" {
 
 
 #ifndef CHECK_ERR_INTERVAL
-#define CHECK_ERR_INTERVAL 1
+#define CHECK_ERR_INTERVAL 10
 #endif
 
 #ifndef USE_CSF
@@ -337,8 +337,10 @@ splatt_kruskal *  StreamCPD::compute(
   csf_opts[SPLATT_OPTION_VERBOSITY] = SPLATT_VERBOSITY_NONE;
 #endif
 
-  idx_t const max_outer = 10;
-  printf("OUTER=%lu\n", max_outer);
+  cpd_opts->tolerance = 1e-1;
+  cpd_opts->max_inner_iterations = 20;
+  cpd_opts->inner_tolerance = 1e-1;
+  cpd_stats2(_rank, _source->num_modes(), cpd_opts, global_opts);
 
   /*
    * Stream
@@ -375,7 +377,7 @@ splatt_kruskal *  StreamCPD::compute(
     }
 
     val_t prev_delta = 0.;
-    for(idx_t outer=0; outer < max_outer; ++outer) {
+    for(idx_t outer=0; outer < cpd_opts->max_iterations; ++outer) {
       val_t delta = 0.;
 
       /*
@@ -444,7 +446,7 @@ splatt_kruskal *  StreamCPD::compute(
       printf("  delta: %e prev_delta: %e (%e diff)\n", delta, prev_delta, fabs(delta - prev_delta));
 
       /* check convergence */
-      if(outer > 0 && fabs(delta - prev_delta) < 1e-1) {
+      if(outer > 0 && fabs(delta - prev_delta) < cpd_opts->tolerance) {
         printf("  converged in: %lu\n", outer+1);
         prev_delta = 0.;
         break;
