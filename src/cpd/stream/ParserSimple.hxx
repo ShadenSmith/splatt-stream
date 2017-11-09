@@ -23,6 +23,7 @@ public:
   /* invert mapping to get original indices */
   inline idx_t lookup_ind(idx_t mode, idx_t ind) { return _perm->iperms[mode][ind]; }
 
+  inline idx_t * perm(idx_t mode) { return _perm->perms[mode]; }
   inline idx_t * iperm(idx_t mode) { return _perm->iperms[mode]; }
 
   bool last_batch();

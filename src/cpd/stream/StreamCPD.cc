@@ -21,7 +21,7 @@ extern "C" {
 
 
 #ifndef CHECK_ERR_INTERVAL
-#define CHECK_ERR_INTERVAL 10
+#define CHECK_ERR_INTERVAL 700
 #endif
 
 #ifndef USE_CSF
@@ -46,6 +46,31 @@ static void p_copy_upper_tri(
   timer_stop(&timers[TIMER_ATA]);
 }
 
+void StreamCPD::track_row(
+    idx_t mode,
+    idx_t orig_index,
+    char * name)
+{
+  idx_t const num_rows = _stream_mats_new[mode]->num_rows();
+
+  /* lookup stocks */
+  idx_t const row_id = _source->lookup_ind(mode, orig_index);
+  printf("tracking %s: %lu of %lu\n", name, row_id, num_rows);
+  if(num_rows >= row_id) {
+    val_t const * const track_row = &(_stream_mats_new[mode]->vals()[_rank * row_id]);
+    val_t const * const time_row = _mat_ptrs[_stream_mode]->vals;
+    val_t track_norm = 0.;
+    val_t time_norm  = 0.;
+    val_t inner = 0.;
+    for(idx_t f=0; f < _rank; ++f) {
+      inner += track_row[f] * time_row[f];
+
+      track_norm += track_row[f] * track_row[f];
+      time_norm += time_row[f] * time_row[f];
+    }
+    printf("%s: %e (track: %e time: %e)\n", name, inner, track_norm, time_norm);
+  }
+}
 
 
 double StreamCPD::compute_errorsq(
@@ -337,9 +362,9 @@ splatt_kruskal *  StreamCPD::compute(
   csf_opts[SPLATT_OPTION_VERBOSITY] = SPLATT_VERBOSITY_NONE;
 #endif
 
-  cpd_opts->tolerance = 1e-1;
-  cpd_opts->max_inner_iterations = 20;
-  cpd_opts->inner_tolerance = 1e-1;
+  cpd_opts->tolerance = 5e-2;
+  cpd_opts->max_inner_iterations = 25;
+  cpd_opts->inner_tolerance = 7e-2;
   cpd_stats2(_rank, _source->num_modes(), cpd_opts, global_opts);
 
   /*
@@ -453,6 +478,12 @@ splatt_kruskal *  StreamCPD::compute(
       }
       prev_delta = delta;
     } /* foreach outer */
+
+#if 1
+    track_row(2, 1920, "stocks");
+    track_row(3, 17825, "obama");
+    track_row(3, 2160, "batman");
+#endif
 
     /* Incorporate forgetting factor */
     for(idx_t x=0; x < _rank * _rank; ++x) {

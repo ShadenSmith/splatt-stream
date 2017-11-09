@@ -23,6 +23,7 @@ public:
 
   virtual idx_t num_modes() = 0;
 
+  virtual idx_t * perm(idx_t mode) { return NULL; }
   virtual idx_t * iperm(idx_t mode) { return NULL; }
   virtual idx_t lookup_ind(idx_t mode, idx_t ind) { return ind; }
 

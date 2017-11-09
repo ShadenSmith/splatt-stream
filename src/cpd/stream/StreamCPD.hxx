@@ -27,6 +27,8 @@ public:
       splatt_global_opts const * const global_opts);
 
 private:
+  void track_row(idx_t mode, idx_t orig_index, char * name);
+
   /*
    * methods
    */
