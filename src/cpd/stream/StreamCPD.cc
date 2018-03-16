@@ -21,7 +21,7 @@ extern "C" {
 
 
 #ifndef CHECK_ERR_INTERVAL
-#define CHECK_ERR_INTERVAL 700
+#define CHECK_ERR_INTERVAL 1
 #endif
 
 #ifndef USE_CSF
@@ -463,7 +463,7 @@ splatt_kruskal *  StreamCPD::compute(
         /* lastly, update aTa */
         mat_aTa(_stream_mats_new[m]->mat(), _cpd_ws->aTa[m]);
 
-        delta += 
+        delta +=
             mat_norm_diff(_stream_mats_old[m]->mat(), _stream_mats_new[m]->mat())
                 / mat_norm(_stream_mats_new[m]->mat());
       } /* foreach mode */
@@ -479,7 +479,7 @@ splatt_kruskal *  StreamCPD::compute(
       prev_delta = delta;
     } /* foreach outer */
 
-#if 1
+#if 0
     track_row(2, 1920, "stocks");
     track_row(3, 17825, "obama");
     track_row(3, 2160, "batman");
@@ -512,7 +512,7 @@ splatt_kruskal *  StreamCPD::compute(
     timer_stop(&stream_time);
     ++it;
 
-    
+
     double local_err   = compute_errorsq(1);
     double global_err  = -1.;
     double local10_err = -1.;
