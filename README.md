@@ -3,9 +3,10 @@ The Surprisingly ParalleL spArse Tensor Toolkit - STREAMED
 
 **NOTE**: this is the development repository for the _streaming_ version of
 SPLATT. Run `splatt cpd --help` for streaming instructions. In short, you can
-add the `--stream=<MODE>` flag to stream one tensor mode. This is a prototype
-implementation of the streaming algorithm, and thus the tensor is still read
-from disk in its entirety and then factored in a streaming manner.
+add the `--stream=<MODE> --reg=frob,1e-2,<MODE>` flag to stream one tensor mode
+with regularization (strongly recommended). This is a prototype implementation
+of the streaming algorithm, and thus the tensor is still read from disk in its
+entirety and then factored in a streaming manner.
 
 The streaming algorithm implemented in this library was published in SDM'18:
 "Streaming Tensor Factorization for Infinite Data Sources". If this contributes
