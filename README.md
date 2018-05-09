@@ -1,7 +1,24 @@
-The Surprisingly ParalleL spArse Tensor Toolkit
-===============================================
+The Surprisingly ParalleL spArse Tensor Toolkit - STREAMED
+==========================================================
 
-[![Build Status](https://travis-ci.org/ShadenSmith/splatt.svg?branch=master)](https://travis-ci.org/ShadenSmith/splatt)
+**NOTE**: this is the development repository for the _streaming_ version of
+SPLATT. Run `splatt cpd --help` for streaming instructions. In short, you can
+add the `--stream=<MODE>` flag to stream one tensor mode. This is a prototype
+implementation of the streaming algorithm, and thus the tensor is still read
+from disk in its entirety and then factored in a streaming manner.
+
+The streaming algorithm implemented in this library was published in SDM'18:
+"Streaming Tensor Factorization for Infinite Data Sources". If this contributes
+to your research, please cite with the following BibTeX entry:
+
+    @inproceedings{smith2018streaming,
+      title={Streaming Tensor Factorization for Infinite Data Sources},
+      author={Smith, Shaden and Huang, Kejun and Sidiropoulos, Nicholas D. and Karypis, George},
+      booktitle={Proceedings of the 2018 SIAM International Conference on Data Mining},
+      year={2018},
+      organization={SIAM}
+    }
+
 
 SPLATT is a library and C API for sparse tensor factorization. SPLATT supports
 shared-memory parallelism with OpenMP and distributed-memory parallelism with
