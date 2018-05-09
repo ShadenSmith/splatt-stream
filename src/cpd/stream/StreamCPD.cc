@@ -20,8 +20,9 @@ extern "C" {
 #endif
 
 
+/* How often to check global factorization error. This is expensive! */
 #ifndef CHECK_ERR_INTERVAL
-#define CHECK_ERR_INTERVAL 1
+#define CHECK_ERR_INTERVAL 100
 #endif
 
 #ifndef USE_CSF
@@ -479,10 +480,10 @@ splatt_kruskal *  StreamCPD::compute(
       prev_delta = delta;
     } /* foreach outer */
 
+    /* Optional: track rows for data analysis. */
 #if 0
     track_row(2, 1920, "stocks");
     track_row(3, 17825, "obama");
-    track_row(3, 2160, "batman");
 #endif
 
     /* Incorporate forgetting factor */
